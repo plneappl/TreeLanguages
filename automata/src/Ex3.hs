@@ -1,13 +1,14 @@
 {-# LANGUAGE TypeSynonymInstances, FlexibleInstances #-}
 module Ex3 where
 
-import RoseTree
 import Alphabet
 import States
 import qualified DeterministicAutomaton as DA
 import qualified NonDeterministicAutomaton as NA
 import Automaton
 import qualified Data.Set as DS
+import Pretty
+import Data.Tree
 
 data Alph = A | B | E deriving (Show, Eq, Ord)
 
@@ -33,18 +34,18 @@ d _ _ = DS.singleton (E, E)
 na :: NA.NonDeterministicAutomaton Sts Alph
 na = NA.NA d (DS.fromList [(A, A), (B, B)])
 
-ex1, ex2 :: RT Alph
-ex1 = Br A [Br B [Br B [Lf B]], Br A [Br A [Lf A]]]
-ex2 = Br A [Br B [Br B [Lf B]], Br A [Br A [Lf B]]]
+ex1, ex2 :: Tree Alph
+ex1 = Node A [Node B [Node B [Node B []]], Node A [Node A [Node A []]]]
+ex2 = Node A [Node B [Node B [Node B []]], Node A [Node A [Node B []]]]
 
 main :: IO()
 main = do
   print "Tree 1:"
-  print ex1
+  printTree ex1
   automatonAcceptsIO (DA.determinize na) ex1
   --print (DA.acc $ DA.determinize na)
   print "Tree 2:"
-  print ex2
+  printTree ex2
   automatonAcceptsIO (DA.determinize na) ex2
   
 

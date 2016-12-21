@@ -16,6 +16,7 @@ cabal-version:       >=1.10
 library
   hs-source-dirs:      src
   exposed-modules:     Ex1, Ex2, Alphabet, Automaton, DeterministicAutomaton, NonDeterministicAutomaton, Lib, RoseTree, States
+  other-modules:       Pretty
   build-depends:       base >= 4.7 && < 5, 
                        containers
                      , pretty-tree

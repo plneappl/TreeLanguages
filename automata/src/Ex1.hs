@@ -1,14 +1,13 @@
 module Ex1 where
 
 import Prelude hiding (map)
-import RoseTree
 import Alphabet
 import States
 import qualified DeterministicAutomaton as DA
 import qualified NonDeterministicAutomaton as NA
 import Automaton
 import Data.Set
-import Data.Tree.Pretty
+import Pretty
 import Data.Tree
 
 data Alph = A | B | F deriving (Show, Eq, Ord)
@@ -40,17 +39,17 @@ na = NA.NA d1 (singleton Y)
 da :: DA.DeterministicAutomaton Sts Alph 
 da = DA.DA d2 (singleton Y)
 
-ex1_1, ex1_2 :: RT Alph
-ex1_1 = Br F [Br F [Lf A, Lf A], Br F [Lf B, Lf B]]
+ex1_1, ex1_2 :: Tree Alph
+ex1_1 = Node F [Node F [Node A [], Node A []], Node F [Node B [], Node B []]]
 
-ex1_2 = Br F [Br F [Br F [Lf B, Lf B, Br F [Lf B, Lf B]], Br F [Lf B, Lf B, Br F [Lf B, Lf B]]], Br F [Lf B, Lf B, Br F [Lf B, Lf B]]]
+ex1_2 = Node F [Node F [Node F [Node B [], Node B [], Node F [Node B [], Node B []]], Node F [Node B [], Node B [], Node F [Node B [], Node B []]]], Node F [Node B [], Node B [], Node F [Node B [], Node B []]]]
 
-toTree :: RT a -> Tree a
-toTree (Lf x) = Node x []
-toTree (Br x children) = Node x $ fmap toTree children
+--  toTree :: RT a -> Tree a
+--  toTree (Lf x) = Node x []
+--  toTree (Br x children) = Node x $ fmap toTree children
 
-printTree :: (Show a) => RT a -> IO ()
-printTree t = putStr $ drawVerticalTree (fmap show (toTree t))
+--  printTree :: (Show a) => RT a -> IO ()
+--  printTree t = putStr $ drawVerticalTree (fmap show (toTree t))
 
 main :: IO()
 main = do

@@ -4,13 +4,13 @@ module DeterministicAutomaton where
 
 import Prelude hiding (map, filter)
 import qualified Prelude as P
-import RoseTree
 import Alphabet
 import States
 import NonDeterministicAutomaton (NonDeterministicAutomaton(NA))
 import Automaton
 import Lib
 import Data.Set
+import Data.Tree
 
 data DeterministicAutomaton s a where
   DA :: (Alphabet a, States s) => {
@@ -20,9 +20,9 @@ data DeterministicAutomaton s a where
 
 type DeltaProto a s = a -> [s] -> s
 
-runDeterministicAutomaton :: DeterministicAutomaton s a -> RT a -> s
-runDeterministicAutomaton da (Br a rs) = (delta da) a (P.map (runDeterministicAutomaton da) rs)
-runDeterministicAutomaton da (Lf a) = (delta da) a []
+runDeterministicAutomaton :: DeterministicAutomaton s a -> Tree a -> s
+runDeterministicAutomaton da (Node a rs) = (delta da) a (P.map (runDeterministicAutomaton da) rs)
+--  runDeterministicAutomaton da (Lf a) = (delta da) a []
 
 instance (States s, Eq s) => Automaton (DeterministicAutomaton s) where
   automatonAccepts da rt = runDeterministicAutomaton da rt `elem` (acc da)
