@@ -8,6 +8,8 @@ import qualified DeterministicAutomaton as DA
 import qualified NonDeterministicAutomaton as NA
 import Automaton
 import Data.Set
+import Data.Tree.Pretty
+import Data.Tree
 
 data Alph = A | B | F deriving (Show, Eq, Ord)
 instance Alphabet Alph
@@ -43,10 +45,17 @@ ex1_1 = Br F [Br F [Lf A, Lf A], Br F [Lf B, Lf B]]
 
 ex1_2 = Br F [Br F [Br F [Lf B, Lf B, Br F [Lf B, Lf B]], Br F [Lf B, Lf B, Br F [Lf B, Lf B]]], Br F [Lf B, Lf B, Br F [Lf B, Lf B]]]
 
+toTree :: RT a -> Tree a
+toTree (Lf x) = Node x []
+toTree (Br x children) = Node x $ fmap toTree children
+
+printTree :: (Show a) => RT a -> IO ()
+printTree t = putStr $ drawVerticalTree (fmap show (toTree t))
+
 main :: IO()
 main = do
   print "Tree 1:"
-  print ex1_1
+  printTree ex1_1
   print "NTA looking for an A:"
   print $ NA.runNonDeterministicAutomaton na ex1_1
   automatonAcceptsIO na ex1_1
@@ -60,7 +69,7 @@ main = do
   automatonAcceptsIO da ex1_1
   putStrLn ""
   print "Tree 2:"
-  print ex1_2
+  printTree ex1_2
   automatonAcceptsIO da ex1_2
   automatonAcceptsIO na ex1_2
   
