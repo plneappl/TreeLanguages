@@ -16,10 +16,11 @@ cabal-version:       >=1.10
 library
   hs-source-dirs:      src
   exposed-modules:     Ex1, Ex2, Alphabet, Automaton, DeterministicAutomaton, NonDeterministicAutomaton, Lib, RoseTree, States
-  other-modules:       Pretty
+  other-modules:       Pretty, ParseForest
   build-depends:       base >= 4.7 && < 5, 
                        containers
                      , pretty-tree
+                     , parsec
   default-language:    Haskell2010
 
 executable automata-exe

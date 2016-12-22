@@ -1,5 +1,5 @@
 
-module Pretty(printTree) where
+module Pretty (printTree) where
 
 import Data.Tree
 import Data.Tree.Pretty
