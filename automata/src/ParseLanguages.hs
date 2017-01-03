@@ -3,6 +3,7 @@ module ParseLanguages where
 
 import Data.Tree
 import Text.Parsec hiding (Empty)
+import GHC.IO.Encoding
 
 import Data.List
 import Control.Monad
@@ -65,6 +66,7 @@ test s = print $ parse (regExp (void $ char 'e') (char 'a')) "" s
     
 main :: IO ()
 main = do
+    setLocaleEncoding utf8
     test ""
     test "e"
     test "aa"
