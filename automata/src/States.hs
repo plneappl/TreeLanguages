@@ -13,4 +13,4 @@ instance (States s, Ord s) => States (DS.Set s) where
   allStates = powerset allStates
 
 instance (States s, Ord s) => HasEmptyState (DS.Set s) where
-  emptyState = DS.empty 
+  emptyState = DS.empty

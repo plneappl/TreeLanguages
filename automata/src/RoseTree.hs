@@ -25,3 +25,7 @@ instance Monoid (Context a) where
     Lf Nothing -> c2
     l@(Lf (Just _)) -> l
     (Br a c1') -> Br a (map (mappend c2) c1')
+
+foldRT :: (a -> b) -> (a -> [b] -> b) -> RT a -> b
+foldRT fl _ (Lf l)     = fl l
+foldRT fl fb (Br l rs) = fb l $ fmap (foldRT fl fb) rs
