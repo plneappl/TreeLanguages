@@ -34,7 +34,5 @@ determinize (NA delta acc) = DA delta' acc' where
   delta' a [] = delta a []
   delta' a ss = foldMap (delta a) $ chooseAll emptyState ss
 
-
-
 --main :: IO ()
 --main = print ""

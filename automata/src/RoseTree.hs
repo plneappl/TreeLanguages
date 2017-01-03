@@ -1,7 +1,7 @@
 {-# LANGUAGE TypeSynonymInstances, FlexibleInstances, DeriveFunctor #-}
 module RoseTree where
 
-data RT a = Lf a | Br a [RT a] deriving (Show, Functor)
+data RT a = Lf a | Br a [RT a] deriving (Show, Eq, Functor, Ord)
 
 -- https://www.mimuw.edu.pl/~bojan/upload/confbirthdayBojanczykW08.pdf
 -- page 2:
