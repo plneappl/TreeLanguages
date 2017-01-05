@@ -1,12 +1,12 @@
 
 module ParseLanguages where
 
-import Data.Tree
 import Text.Parsec hiding (Empty)
 import GHC.IO.Encoding
 
 import Data.List
 import Control.Monad
+import RoseTree
 
 type Parser a = Parsec String () a
 
@@ -23,8 +23,8 @@ instance (Show a) => Show (RegExp a) where
     show Unit  = "λ"
     show (Singleton s) = show s
     show (Star r) = "( " ++ show r ++ " )*"
-    show (Union rs) = intercalate " | " $ map show rs
-    show (Concat rs) = concatMap show rs
+    show (Union rs) = "[" ++ intercalate " | " (map show rs) ++ "]"
+    show (Concat rs) = intercalate "." $ map show rs
 
 data DTD a = DTD{ root :: a
                 , rules :: a -> RegExp a
@@ -45,13 +45,13 @@ regExp unit singleton = do
             s <- sngl <|> unit'
             char '*'
             return $ Star s
-        star = starp <|> stars
+        star = try starp <|> stars
         union = do
             let unionnp = sepBy re (char '|' <|> char '+' <|> char '∪')
             es <- between (char '(') (char ')') unionnp
             case es of
                 []  -> unexpected "empty union"
-                [e] -> unexpected "unary union"
+                [e] -> return e
                 _   -> return $ Union es
         conc  = do
             e  <- choice $ fmap try [union, star, unit', sngl]
@@ -59,11 +59,31 @@ regExp unit singleton = do
             case es of
                 [] -> return e
                 _  -> return $ Concat (e:es)
-    choice $ fmap try [union, conc, star, unit', sngl, empty]
-        
+    --  choice $ fmap (try [union, conc, star, unit', sngl, empty]
+    rs <- many1 $ choice $ fmap try [union, conc, star, unit', sngl]
+    case rs of
+         []  -> empty
+         [r] -> return r
+         _   -> return $ Concat rs
+
+
+data Chars = A | B | C | D | E | F | G | H | I | J | K | L | M
+           | N | O | P | Q | R | S | T | U | V | W | X | Y | Z
+           deriving (Show,Eq,Enum)
+
+char' :: Char -> Parser Chars
+char' = (>>= (return . toChars)) . char
+    where
+        toChars = toEnum . (+ (-97)) . fromEnum
+
 test :: String -> IO ()
-test s = print $ parse (regExp (void $ char 'e') (char 'a')) "" s
-    
+test s = putStr $ case parse (regExp (void $ char 'e') (char 'a')) "" s of
+                      Left e -> "----------Failure in pattern " ++ s ++ ":\n" ++ show e ++ "\n"
+                      Right r -> "++++++++++Pattern " ++ s ++ " yields:\n" ++ show r ++ "\n"
+
+test' :: String -> IO ()
+test' s = print $ parse (regExp (void $ char' 'e') (foldl1 (<|>) $ map char' ['a'..'z'])) "" s
+
 main :: IO ()
 main = do
     setLocaleEncoding utf8
@@ -77,4 +97,11 @@ main = do
     test "(a|a|ae|a)"
     test "(a|a|a*e|a)"
     test "(a|a|(ae)*e|a)"
-    test "(a|a|(a|e)e|a)"
+    test "e*"
+    test "(a|a)a"
+    test "(a|aa)"
+    test "a(a|a)"
+    test "a(a|a)a"
+    test "(a|a)a"
+    test "(((a)|a)a)"
+    test "(a|a|(a(a|a|a)|e)e|a)"
