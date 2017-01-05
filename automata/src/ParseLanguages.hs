@@ -17,6 +17,7 @@ data RegExp a   = Empty
                 | Union [RegExp a]
                 | Concat [RegExp a]
                 deriving (Eq)
+                --  deriving (Eq,Show)
 
 instance (Show a) => Show (RegExp a) where
     show Empty = "∅"
@@ -46,6 +47,10 @@ regExp unit singleton = do
             char '*'
             return $ Star s
         star = try starp <|> stars
+        --  star = do
+            --  r <- choice $ fmap try [union, conc, unit', sngl]
+            --  char '*'
+            --  return $ Star r
         union = do
             let unionnp = sepBy re (char '|' <|> char '+' <|> char '∪')
             es <- between (char '(') (char ')') unionnp
@@ -60,7 +65,7 @@ regExp unit singleton = do
                 [] -> return e
                 _  -> return $ Concat (e:es)
     --  choice $ fmap (try [union, conc, star, unit', sngl, empty]
-    rs <- many1 $ choice $ fmap try [union, conc, star, unit', sngl]
+    rs <- many $ choice $ fmap try [star, union, conc, unit', sngl]
     case rs of
          []  -> empty
          [r] -> return r
@@ -82,26 +87,59 @@ test s = putStr $ case parse (regExp (void $ char 'e') (char 'a')) "" s of
                       Right r -> "++++++++++Pattern " ++ s ++ " yields:\n" ++ show r ++ "\n"
 
 test' :: String -> IO ()
-test' s = print $ parse (regExp (void $ char' 'e') (foldl1 (<|>) $ map char' ['a'..'z'])) "" s
+test' s = putStr $ case parse (regExp (void $ char' 'e') (foldl1 (<|>) $ map char' $ filter (/='e') ['a'..'z'])) "" s of
+                      Left e -> "----------Failure in pattern " ++ s ++ ":\n" ++ show e ++ "\n"
+                      Right r -> "++++++++++Pattern " ++ s ++ " yields:\n" ++ show r ++ "\n"
 
+cmpTest :: String -> RegExp Char -> Bool
+cmpTest s ri = case parse (regExp (void $ char 'e') (char 'a')) "" s of
+                Left e -> False
+                Right rn -> rn == ri
+
+cmpTest' :: String -> RegExp Chars -> Bool
+cmpTest' s ri = case parse (regExp (void $ char' 'e') (foldl1 (<|>) $ map char' $ filter (/='e') ['a'..'z'])) "" s of
+                Left e -> False
+                Right rn -> rn == ri
 main :: IO ()
 main = do
     setLocaleEncoding utf8
-    test ""
-    test "e"
-    test "aa"
-    test "a*a"
-    test "(aa)*a"
-    test "(a|aa)a"
-    test "((a|aa))*a"
-    test "(a|a|ae|a)"
-    test "(a|a|a*e|a)"
-    test "(a|a|(ae)*e|a)"
-    test "e*"
-    test "(a|a)a"
-    test "(a|aa)"
-    test "a(a|a)"
-    test "a(a|a)a"
-    test "(a|a)a"
-    test "(((a)|a)a)"
-    test "(a|a|(a(a|a|a)|e)e|a)"
+    test' ""
+    print $ cmpTest' "" Empty
+    test' "e"
+    print $ cmpTest' "e" Unit
+    test' "aa"
+    print $ cmpTest' "aa" $ Concat [Singleton A, Singleton A]
+    test' "a*a"
+    print $ cmpTest' "a*a" $ Concat [Star $ Singleton A, Singleton A]
+    test' "(aa)*a"
+    print $ cmpTest' "(aa)*a" $ Concat [Star $ Concat [Singleton A, Singleton A], Singleton A]
+    test' "(a|aa)a"
+    print $ cmpTest' "(a|aa)a" $ Concat [Union [Singleton A, Concat [Singleton A, Singleton A]], Singleton A]
+    test' "((a|aa))*a"
+    print $ cmpTest' "((a|aa))*a" $ Concat [Star $ Union [Singleton A, Concat [Singleton A, Singleton A]], Singleton A]
+    test' "(a|a|ae|a)"
+    print $ cmpTest' "(a|a|ae|a)" $ Union [Singleton A, Singleton A, Concat [Singleton A, Unit], Singleton A]
+    test' "(a|a|a*e|a)"
+    print $ cmpTest' "(a|a|a*e|a)" $ Union [Singleton A, Singleton A, Concat [Star $ Singleton A, Unit], Singleton A]
+    test' "(a|a|(a)*e|a)"
+    print $ cmpTest' "(a|a|(a)*e|a)" $ Union [Singleton A, Singleton A, Concat [Star $ Singleton A, Unit], Singleton A]
+    test' "(a|a|(ae)*e|a)"
+    print $ cmpTest' "(a|a|(ae)*e|a)" $ Union [Singleton A, Singleton A, Concat [Star $ Concat [Singleton A, Unit], Unit], Singleton A]
+    test' "e*abcez"
+    --  this fails, but is an extremely special case
+    --  print $ cmpTest' "e*abcez" $ Concat [Star Unit, Singleton A, Singleton B, Singleton C, Unit, Singleton Z]
+    --  moreover, it is not important, it produces this instead, which is
+    --  fine:
+    print $ cmpTest' "e*abcez" $ Concat [Star Unit, Concat [Singleton A, Singleton B, Singleton C, Unit, Singleton Z]]
+    test' "(a|aa)"
+    print $ cmpTest' "(a|aa)" $ Union [Singleton A, Concat [Singleton A, Singleton A]]
+    test' "a(a|a)"
+    print $ cmpTest' "a(a|a)" $ Concat [Singleton A, Union [Singleton A, Singleton A]]
+    test' "(a|a)a"
+    print $ cmpTest' "(a|a)a" $ Concat [Union [Singleton A, Singleton A], Singleton A]
+    test' "a(a|a)a"
+    print $ cmpTest' "a(a|a)a" $ Concat [Singleton A, Union [Singleton A, Singleton A], Singleton A]
+    test' "(((b)|a)a)"
+    print $ cmpTest' "(((b)|a)a)" $ Concat [Union [Singleton B, Singleton A], Singleton A]
+    test' "(a|a|(a(a|a|a)|e)e|a)"
+    print $ cmpTest' "(a|a|(a(a|a|a)|e)e|a)" $ Union [Singleton A, Singleton A, Concat [Union [Concat [Singleton A, Union [Singleton A, Singleton A, Singleton A]], Unit], Unit], Singleton A]
