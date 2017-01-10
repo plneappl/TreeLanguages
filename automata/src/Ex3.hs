@@ -12,7 +12,8 @@ import Pretty
 
 data Alph = A | B | E deriving (Show, Eq, Ord)
 
-instance Alphabet Alph
+instance Alphabet Alph where
+  allLetters = [A, B, E]
 
 type Sts = (Alph, Alph)
 instance States Sts where

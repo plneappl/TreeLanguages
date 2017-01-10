@@ -9,9 +9,11 @@ import qualified DeterministicAutomaton as DA
 import qualified NonDeterministicAutomaton as NA
 import Automaton
 import Data.Set
+import qualified Data.List as DL
 
 data Alph = A | B | F deriving (Show, Eq, Ord)
-instance Alphabet Alph
+instance Alphabet Alph where
+  allLetters = [A, B, F]
 
 
 data Sts = Y | N | E deriving (Show, Eq, Ord)
@@ -65,4 +67,5 @@ main = do
   printRT ex1_2
   automatonAcceptsIO da ex1_2
   automatonAcceptsIO na ex1_2
+  putStrLn $ DL.intercalate "\n" $ DL.map show $ take 100 $ allAcceptedTrees da
 

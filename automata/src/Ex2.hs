@@ -9,7 +9,8 @@ import qualified Data.Set as DS
 import Pretty
 
 data Alph = A | B | F | Eps deriving (Show, Eq)
-instance Alphabet Alph
+instance Alphabet Alph where
+  allLetters = [A, B, F, Eps]
 
 data Sts = SA | SB | Y | N deriving (Show, Eq, Ord)
 instance States Sts where
