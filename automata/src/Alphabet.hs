@@ -1,3 +1,6 @@
+{-# LANGUAGE FlexibleInstances #-}
 module Alphabet where
 
-class Alphabet a
+class Alphabet a where
+  allLetters :: [a]
+
