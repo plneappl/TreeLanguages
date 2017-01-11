@@ -69,16 +69,22 @@ fromRegExp regex = fst $ fromRegExp' 0 regex
 
 fromRegExp' :: (Alphabet a) => Int -> RegExp a -> (EpsWordNFA CountableState a, Int)
 fromRegExp' n Empty = undefined
+ -- λ : o---ε--->o
 fromRegExp' n Unit  = (EpsWNFA delta epsDelta (DS.singleton $ CState n) (DS.singleton $ CState $ n+1), totNum)
     where
         totNum              = n+1
         delta               = const $ const DS.empty
         epsDelta (CState s) = if s == n then DS.singleton (CState $ s+1) else DS.empty
+ -- a : o---a--->o
 fromRegExp' n (Singleton a) = (EpsWNFA delta epsDelta (DS.singleton $ CState n) (DS.singleton $ CState $ n+1), totNum)
     where
         totNum             = n+1
         delta a (CState s) = if s == n then DS.singleton (CState $ s+1) else DS.empty
         epsDelta           = const DS.empty
+ --      _____________ε_____________.
+ --      |                          v
+ -- s* : o---ε-->o---N(s)-->o---ε-->o
+ --              î____ε_____|
 fromRegExp' n (Star regex) = (EpsWNFA delta' epsDelta' startState endState, totNum)
     where
         endState           = DS.singleton $ CState $ n+1
@@ -93,6 +99,8 @@ fromRegExp' n (Star regex) = (EpsWNFA delta' epsDelta' startState endState, totN
             | s > (n+1)  = if (CState s) `DS.member` (acc starAut)
                            then (epsDelta starAut (CState s)) `DS.union` (start starAut) `DS.union` endState
                            else epsDelta starAut (CState s)
+ -- s + t : o--ε--N(s)--ε->o
+ --         |__ε__N(t)__ε__î
 fromRegExp' n (Union rs) = (EpsWNFA delta' epsDelta' startState endState, totNum)
     where
         startState = DS.singleton $ CState n
@@ -106,6 +114,7 @@ fromRegExp' n (Union rs) = (EpsWNFA delta' epsDelta' startState endState, totNum
                         _  -> snd $ head auts
         delta'     = undefined
         epsDelta'  = undefined
+ -- st : o---N(s)--N(t)-->o
 fromRegExp' n (Concat rs) = (EpsWNFA delta' epsDelta' startState endState, totNum)
     where
         auts       = tail $ foldr (\r ps -> case ps of
