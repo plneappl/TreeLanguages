@@ -6,7 +6,9 @@ import Alphabet
 import States
 import qualified Data.Set as DS
 import WordAutomaton
-import ParseLanguages
+--  import ParseLanguages
+import DTD
+import RegExp
 
 data EpsWordNFA s a where
   --  EpsWNFA :: (Alphabet a, States s, HasEmptyState s) => {
@@ -36,27 +38,27 @@ runEpsWordNFA na = foldl applyTransition (doEpsTrans $ start na)
                         else doEpsTrans (DS.union states reachable)
 
 
-data TestStates = SA | SB | SC | SD deriving (Eq,Ord,Show,Enum)
+--  data TestStates = SA | SB | SC | SD deriving (Eq,Ord,Show,Enum)
 
-instance States TestStates where
-    allStates = DS.fromList [SA .. SD]
+--  instance States TestStates where
+    --  allStates = DS.fromList [SA .. SD]
 
-type TestAlph =  Char
+--  type TestAlph =  Char
 
-instance Alphabet Char where
-    allLetters = ['a' .. 'b']
+--  instance Alphabet Char where
+    --  allLetters = ['a' .. 'b']
 
-testAut :: EpsWordNFA TestStates TestAlph
-testAut = EpsWNFA delta epsDelta (DS.fromList [SA,SB]) (DS.singleton SD)
-    where
-        delta 'a' SA = DS.singleton SB
-        delta 'a' SB = DS.empty
-        delta 'b' SA = DS.singleton SC
-        delta 'b' SB = DS.singleton SC
-        delta 'a' SC = DS.fromList [SC,SD]
-        delta _   _  = DS.empty
-        epsDelta SB  = DS.singleton SA
-        epsDelta _   = DS.empty
+--  testAut :: EpsWordNFA TestStates TestAlph
+--  testAut = EpsWNFA delta epsDelta (DS.fromList [SA,SB]) (DS.singleton SD)
+    --  where
+        --  delta 'a' SA = DS.singleton SB
+        --  delta 'a' SB = DS.empty
+        --  delta 'b' SA = DS.singleton SC
+        --  delta 'b' SB = DS.singleton SC
+        --  delta 'a' SC = DS.fromList [SC,SD]
+        --  delta _   _  = DS.empty
+        --  epsDelta SB  = DS.singleton SA
+        --  epsDelta _   = DS.empty
 
 data CountableState = CState Int deriving (Eq,Show,Ord)
 

@@ -2,6 +2,7 @@
 
 module ParseForest where
 
+import Parser
 import Text.Parsec
 import Data.Set as DS
 
@@ -18,7 +19,6 @@ simpleTree = do
     char ')'
     return $ Br () ts
 
-type Parser a = Parsec String () a
 data Translator a = Translator { node :: Parser a, startMark :: Parser (), endMark :: Parser ()}
 
 tree :: (Eq a,Show a) => Translator a -> Parsec String () (RT a)

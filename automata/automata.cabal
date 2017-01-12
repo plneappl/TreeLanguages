@@ -15,8 +15,8 @@ cabal-version:       >=1.10
 
 library
   hs-source-dirs:      src
-  exposed-modules:     Ex1, Ex2, Alphabet, Automaton, DeterministicAutomaton, NonDeterministicAutomaton, Lib, RoseTree, States, Forest, TreeEnumeration
-  other-modules:       Pretty, ParseForest, ParseLanguages, WordAutomaton, EpsWordNFA
+  exposed-modules:     Alphabet, Automaton, DTD, DeterministicAutomaton, EpsWordNFA, Ex1, Ex2, Forest, ForestAlgebra, Lib, NonDeterministicAutomaton, ParseDTD, ParseForest, ParseLanguages, ParseRegExp, Parser, Pretty, RegExp, RoseTree, States, TreeEnumeration, WordAutomaton
+  -- other-modules:       Pretty, ParseForest, ParseLanguages, WordAutomaton, EpsWordNFA
   build-depends:       base >= 4.7 && < 5, 
                        containers
                      , pretty-tree
