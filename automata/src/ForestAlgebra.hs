@@ -1,8 +1,8 @@
-{-# LANGUAGE GADTs #-}
+{-# LANGUAGE GADTs, TypeApplications #-}
 module ForestAlgebra where
 import RoseTree
-import Forest
 import Alphabet
+import Data.Functor.Identity
 
 -- https://www.mimuw.edu.pl/~bojan/upload/confbirthdayBojanczykW08.pdf
 -- section 3:
@@ -19,18 +19,10 @@ data Morph h v g w where
     β :: v -> w
   } -> Morph h v g w
 
-insertHoleToRootRight :: Context a -> Context a
-insertHoleToRootRight (Lf a) = Br a [Lf Nothing]
-insertHoleToRootRight (Br a bs) = Br a (bs ++ [Lf Nothing])
-
-insertHoleToRootLeft :: Context a -> Context a
-insertHoleToRootLeft (Lf a) = Br a [Lf Nothing]
-insertHoleToRootLeft (Br a bs) = Br a (Lf Nothing:bs)
-
 type FreeForestAlgebra a = ForestAlgebra (Forest a) (Context a)
 freeForestAlgebra :: (Alphabet a) => FreeForestAlgebra a
 freeForestAlgebra = FA {
-  act = \ (Forest trees) context -> Forest $ map (insertTree context) trees,
-  inₗ = \(Forest trees) -> mconcat $ map (insertHoleToRootRight . rtToContext) trees,
-  inᵣ = \(Forest trees) -> mconcat $ map (insertHoleToRootLeft . rtToContext) trees
+    act = \ (Forest ts) contxt -> Forest $ map (fmap runIdentity) $ trees $ insertTrees contxt $ map (fmap (return @Identity)) ts
+  , inₗ = \(Forest ts) -> Context ((map (fmap return) ts) ++ [Lf Nothing])
+  , inᵣ = \(Forest ts) -> Context ((Lf Nothing):(map (fmap return) ts))
 }
