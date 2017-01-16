@@ -22,7 +22,7 @@ data Morph h v g w where
 type FreeForestAlgebra a = ForestAlgebra (Forest a) (Context a)
 freeForestAlgebra :: (Alphabet a) => FreeForestAlgebra a
 freeForestAlgebra = FA {
-    act = \ (Forest ts) contxt -> Forest $ map (fmap runIdentity) $ trees $ insertTrees contxt $ map (fmap (return @Identity)) ts
-  , inₗ = \(Forest ts) -> Context ((map (fmap return) ts) ++ [Lf Nothing])
-  , inᵣ = \(Forest ts) -> Context ((Lf Nothing):(map (fmap return) ts))
+    act = \ forest contxt -> insertForest contxt forest
+  , inₗ = \f -> Context f mempty mempty
+  , inᵣ = \f -> Context mempty mempty f
 }

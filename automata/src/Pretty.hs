@@ -4,7 +4,6 @@ module Pretty where
 import qualified Data.Tree as DT
 import Data.Tree.Pretty
 import RoseTree
-import Forest
 
 rtToTree :: RT a -> DT.Tree a
 rtToTree = foldRT (flip DT.Node []) DT.Node
@@ -22,7 +21,7 @@ printRT :: (Show a) => RT a -> IO ()
 printRT = printTree . rtToTree
 
 printContext :: (Show a) => Context a -> IO ()
-printContext = printRT . fmap PrintInContext
+printContext c = printForest $ insertForest (fmap (PrintInContext . Just) c) (Forest [Lf $ PrintInContext Nothing])
 
 data PrintInContext a = PrintInContext (Maybe a)
 
