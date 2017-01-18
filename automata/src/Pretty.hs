@@ -23,7 +23,7 @@ printRT = printTree . rtToTree
 printContext :: (Show a) => Context a -> IO ()
 printContext c = printForest $ insertForest (fmap (PrintInContext . Just) c) (Forest [Lf $ PrintInContext Nothing])
 
-data PrintInContext a = PrintInContext (Maybe a)
+newtype PrintInContext a = PrintInContext (Maybe a)
 
 instance (Show a) => Show (PrintInContext a) where
     show (PrintInContext Nothing)  = "☐"

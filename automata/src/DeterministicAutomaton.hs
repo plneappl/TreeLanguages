@@ -21,16 +21,16 @@ data DeterministicAutomaton s a where
 type DeltaProto a s = a -> [s] -> s
 
 runDeterministicAutomaton :: DeterministicAutomaton s a -> RT a -> s
-runDeterministicAutomaton da (Br a rs) = (delta da) a (P.map (runDeterministicAutomaton da) rs)
-runDeterministicAutomaton da (Lf a) = (delta da) a []
+runDeterministicAutomaton da (Br a rs) = delta da a (P.map (runDeterministicAutomaton da) rs)
+runDeterministicAutomaton da (Lf a) = delta da a []
 
 instance (States s, Eq s) => Automaton (DeterministicAutomaton s) where
-  automatonAccepts da rt = runDeterministicAutomaton da rt `elem` (acc da)
+  automatonAccepts da rt = runDeterministicAutomaton da rt `elem` acc da
   automatonAcceptsIO da rt = print $ if automatonAccepts da rt then "DTA accepted" else "DTA didn't accept"
 
 determinize :: (Eq s, Ord s, States s) => NonDeterministicAutomaton s a -> DeterministicAutomaton (Set s) a
 determinize (NA delta acc) = DA delta' acc' where
-  acc' = (filter (\x -> any (`elem` x) acc) (allStates :: (States s, Ord s) => Set (Set s)))
+  acc' = filter (\x -> any (`elem` x) acc) (allStates :: (States s, Ord s) => Set (Set s))
   delta' a [] = delta a []
   delta' a ss = foldMap (delta a) $ chooseAll emptyState ss
 
