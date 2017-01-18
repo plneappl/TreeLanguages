@@ -15,13 +15,14 @@ cabal-version:       >=1.10
 
 library
   hs-source-dirs:      src
-  exposed-modules:     Alphabet, Automaton, DTD, DeterministicAutomaton, EpsWordNFA, Ex1, Ex2, Forest, ForestAlgebra, Lib, NonDeterministicAutomaton, ParseDTD, ParseForest, ParseLanguages, ParseRegExp, Parser, Pretty, RegExp, RoseTree, States, TreeEnumeration, WordAutomaton
+  exposed-modules:     Alphabet, Automaton, DTD, DeterministicAutomaton, EpsWordNFA, Ex1, Ex2, ForestAlgebra, Lib, NonDeterministicAutomaton, ParseDTD, ParseForest, ParseLanguages, ParseRegExp, Parser, Pretty, RegExp, RoseTree, States, TreeEnumeration, WordAutomaton
   -- other-modules:       Pretty, ParseForest, ParseLanguages, WordAutomaton, EpsWordNFA
   build-depends:       base >= 4.7 && < 5, 
                        containers
                      , pretty-tree
                      , parsec
                      , tagged
+                     , equivalence
   default-language:    Haskell2010
 
 executable automata-exe

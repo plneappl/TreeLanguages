@@ -10,7 +10,6 @@ import Control.Monad
 
 import Pretty
 import RoseTree
-import Forest
 
 simpleTree :: Parsec String () (RT ())
 simpleTree = do
