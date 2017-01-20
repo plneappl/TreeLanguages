@@ -22,18 +22,34 @@ instance States Sts where
   allStates = fromList [Y, N, E]
 instance HasEmptyState Sts where
   emptyState = E
+instance Monoid Sts where
+    mempty = E
+    Y `mappend` _ = Y
+    _ `mappend` Y = Y  
+    E `mappend` x = x
+    x `mappend` E = x
+    N `mappend` _ = N
+    _ `mappend` N = N
 
 d1 :: NA.DeltaProto Alph Sts
-d1 A [] = singleton Y
-d1 B [] = singleton N
-d1 F xs | Y `elem` xs = singleton Y
-d1 _ _ = singleton N
+--  d1 A [] = singleton Y
+--  d1 B [] = singleton N
+--  d1 F xs | Y `elem` xs = singleton Y
+--  d1 _ _ = singleton N
+d1 A mempty = singleton Y
+d1 B mempty = singleton N
+d1 F Y      = singleton Y
+d1 _ _      = singleton N
 
 d2 :: DA.DeltaProto Alph Sts
+--  d2 A _ = Y
+--  d2 B _ = N
+--  d2 F xs | Y `elem` xs = Y
+        --  | otherwise = N
 d2 A _ = Y
 d2 B _ = N
-d2 F xs | Y `elem` xs = Y
-        | otherwise = N
+d2 F Y = Y
+d2 _ _ = N
 
 na :: NA.NonDeterministicAutomaton Sts Alph
 na = NA.NA d1 (singleton Y)
@@ -66,6 +82,9 @@ main = do
   print "Tree 2:"
   printRT ex1_2
   automatonAcceptsIO da ex1_2
+  print "determinized NTA looking for an A:"
+  print $ "det. NTA " ++ (if automatonAccepts (DA.determinize na) ex1_2 then "accepted" else
+    "didn't accept")
   automatonAcceptsIO na ex1_2
   putStrLn $ DL.intercalate "\n" $ DL.map show $ take 100 $ allAcceptedTrees da
 

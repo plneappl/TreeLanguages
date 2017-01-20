@@ -6,25 +6,26 @@ import RoseTree
 import Lib
 import Automaton
 import qualified Data.Set as DS
+import qualified Data.Foldable as DF
 
 data NonDeterministicAutomaton s a where
-  NA :: (Alphabet a, States s, HasEmptyState s) => {
+  NA :: (Alphabet a, States s, HasEmptyState s, Monoid s) => {
     delta :: DeltaProto a s,
     acc :: DS.Set s
   } -> NonDeterministicAutomaton s a
 
-type DeltaProto a s = a -> [s] -> DS.Set s
+type DeltaProto a s = a -> s -> DS.Set s
 
-instance (States s, Ord s, HasEmptyState s) => Automaton (NonDeterministicAutomaton s) where
+instance (States s, Ord s, HasEmptyState s, Monoid s) => Automaton (NonDeterministicAutomaton s) where
   automatonAccepts na rt = (runNonDeterministicAutomaton na rt `DS.intersection` acc na) /= DS.empty
   automatonAcceptsIO da rt = print $ if automatonAccepts da rt then "NTA accepted" else "NTA didn't accept"
 
-runNonDeterministicAutomaton :: (Ord s, States s, HasEmptyState s) => NonDeterministicAutomaton s a -> RT a -> DS.Set s
-runNonDeterministicAutomaton na (Lf a) = (delta na) a []
+runNonDeterministicAutomaton :: (Ord s, States s, HasEmptyState s, Monoid s) => NonDeterministicAutomaton s a -> RT a -> DS.Set s
+runNonDeterministicAutomaton na (Lf a) = delta na a mempty
 runNonDeterministicAutomaton na (Br a rs) = let
   substatesSets = map (runNonDeterministicAutomaton na) rs
   substatesLists = chooseAll emptyState substatesSets in
-  foldMap ((delta na) a) substatesLists
+  foldMap (delta na a . DF.fold) substatesLists
 
 
 
