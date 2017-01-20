@@ -1,4 +1,5 @@
 {-# LANGUAGE GADTs #-}
+
 module EpsWordNFA where
 
 import Prelude hiding (Word)
@@ -7,7 +8,6 @@ import States
 import qualified Data.Set as DS
 import WordAutomaton
 --  import ParseLanguages
-import DTD
 import RegExp
 
 data EpsWordNFA s a where
@@ -23,8 +23,8 @@ type EpsDeltaProto a s = a -> s -> DS.Set s
 
 --  instance (States s, Ord s, HasEmptyState s) => WordAutomaton (EpsWordNFA s) where
 instance (States s, Ord s) => WordAutomaton (EpsWordNFA s) where
-  automatonAccepts na rt = (runEpsWordNFA na rt `DS.intersection` acc na) /= DS.empty
-  automatonAcceptsIO da rt = print $ if automatonAccepts da rt then "NFA accepted" else "NFA didn't accept"
+  automatonAccepts na word = (runEpsWordNFA na word `DS.intersection` acc na) /= DS.empty
+  automatonAcceptsIO da word = print $ if automatonAccepts da word then "NFA accepted" else "NFA didn't accept"
 
 --  runEpsWordNFA :: (Ord s, States s, HasEmptyState s) => EpsWordNFA s a -> Word a -> DS.Set s
 runEpsWordNFA :: (Ord s, States s, Alphabet a) => EpsWordNFA s a -> Word a -> DS.Set s
