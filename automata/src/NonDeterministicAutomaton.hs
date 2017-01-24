@@ -23,9 +23,10 @@ instance (States s, Ord s, HasEmptyState s, Monoid s) => Automaton (NonDetermini
 runNonDeterministicAutomaton :: (Ord s, States s, HasEmptyState s, Monoid s) => NonDeterministicAutomaton s a -> RT a -> DS.Set s
 runNonDeterministicAutomaton na (Lf a) = delta na a mempty
 runNonDeterministicAutomaton na (Br a rs) = let
-  substatesSets = map (runNonDeterministicAutomaton na) rs
-  substatesLists = chooseAll emptyState substatesSets in
-  foldMap (delta na a . DF.fold) substatesLists
+  substatesSets = map (NonDetSimulation . runNonDeterministicAutomaton na) rs
+  startingStates = ndStates $ DF.fold substatesSets
+  in foldMap (delta na a) startingStates
+  
 
 
 
