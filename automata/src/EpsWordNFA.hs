@@ -16,7 +16,8 @@ data EpsWordNFA s a where
     delta :: EpsDeltaProto a s,
     epsDelta :: s -> DS.Set s,
     start :: DS.Set s,
-    acc :: DS.Set s
+    acc :: DS.Set s,
+    states :: DS.Set s
   } -> EpsWordNFA s a
 
 type EpsDeltaProto a s = a -> s -> DS.Set s
@@ -65,20 +66,23 @@ data CountableState = CState Int deriving (Eq,Show,Ord)
 instance States CountableState where
     allStates = DS.fromList $ fmap CState [1..]
 
+cStatesTill :: Int -> DS.Set CountableState
+cStatesTill n = DS.fromList $ fmap CState [0..n]
+
 fromRegExp :: (Eq a, Alphabet a) => RegExp a -> EpsWordNFA CountableState a
-fromRegExp Empty = EpsWNFA (const $ const DS.empty) (const DS.empty) DS.empty DS.empty
+fromRegExp Empty = EpsWNFA (const $ const DS.empty) (const DS.empty) DS.empty DS.empty DS.empty
 fromRegExp regex = fst $ fromRegExp' 0 regex
 
 fromRegExp' :: (Eq a, Alphabet a) => Int -> RegExp a -> (EpsWordNFA CountableState a, Int)
 fromRegExp' n Empty = undefined
  -- λ : o---ε--->o
-fromRegExp' n Unit  = (EpsWNFA delta epsDelta (DS.singleton $ CState n) (DS.singleton $ CState $ n+1), totNum)
+fromRegExp' n Unit  = (EpsWNFA {delta=delta, epsDelta=epsDelta, start=(DS.singleton $ CState n), acc=(DS.singleton $ CState $ n+1), states= cStatesTill totNum}, totNum)
     where
         totNum              = n+1
         delta               = const $ const DS.empty
         epsDelta (CState s) = if s == n then DS.singleton (CState $ s+1) else DS.empty
  -- a : o---a--->o
-fromRegExp' n (Singleton a) = (EpsWNFA delta epsDelta (DS.singleton $ CState n) (DS.singleton $ CState $ n+1), totNum)
+fromRegExp' n (Singleton a) = (EpsWNFA {delta=delta, epsDelta=epsDelta, start=(DS.singleton $ CState n), acc=(DS.singleton $ CState $ n+1), states = cStatesTill totNum}, totNum)
     where
         totNum             = n+1
         delta b (CState s) = if s == n && b == a then DS.singleton (CState $ s+1) else DS.empty
@@ -87,7 +91,7 @@ fromRegExp' n (Singleton a) = (EpsWNFA delta epsDelta (DS.singleton $ CState n) 
  --      |                          v
  -- s* : o---ε-->o---N(s)-->o---ε-->o
  --              î____ε_____|
-fromRegExp' n (Star regex) = (EpsWNFA delta' epsDelta' startState endState, totNum)
+fromRegExp' n (Star regex) = (EpsWNFA {delta=delta', epsDelta=epsDelta', start=startState, acc=endState, states = cStatesTill totNum}, totNum)
     where
         endState           = DS.singleton $ CState $ n+1
         startState         = DS.singleton $ CState n
@@ -105,7 +109,7 @@ fromRegExp' n (Star regex) = (EpsWNFA delta' epsDelta' startState endState, totN
                            else epsDelta starAut cs
  -- s + t : o--ε--N(s)--ε->o
  --         |__ε__N(t)__ε__î
-fromRegExp' n (Union rs) = (EpsWNFA delta' epsDelta' startState endState, totNum)
+fromRegExp' n (Union rs) = (EpsWNFA {delta=delta', epsDelta=epsDelta', start=startState, acc=endState, states = cStatesTill totNum}, totNum)
     where
         startState = DS.singleton $ CState n
         endState   = DS.singleton $ CState $ n+1
@@ -131,7 +135,7 @@ fromRegExp' n (Union rs) = (EpsWNFA delta' epsDelta' startState endState, totNum
                                           else epsDelta aut cs)
                             onlyAuts
  -- st : o---N(s)--N(t)-->o
-fromRegExp' n (Concat rs) = (EpsWNFA delta' epsDelta' startState endState, totNum)
+fromRegExp' n (Concat rs) = (EpsWNFA {delta=delta', epsDelta=epsDelta', start=startState, acc=endState, states = cStatesTill totNum}, totNum)
     where
         lastAut    = fromRegExp' (n+2) $ last rs -- 
         auts       = foldr (\r ps -> case ps of
