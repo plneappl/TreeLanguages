@@ -6,7 +6,13 @@ import WordAutomaton
 import WordDFA
 import qualified EpsWordNFA as Eps
 
+import ParseRegExp
+import Parser
+import Control.Monad
+
 import qualified Data.Set as DS
+
+import Lib
 
 data Sts = Z | O | Tw | Thr | F
     deriving (Show,Eq,Ord,Enum)
@@ -90,6 +96,42 @@ ma'' = minimize da''
 
 allWords :: [String]
 allWords = "" : concatMap (\s -> ['0':s, '1':s]) allWords
+
+------------------------
+---- using regExp ------
+------------------------
+
+rParser :: Parser (RegExp Alph)
+rParser = regExp (void $ char 'e') (choice [ char '0' >> return AZ, char '1' >> return AO ])
+
+fromRight :: Either a b -> b
+fromRight (Right x) = x
+fromRight (Left  _) = error "this should be 'Right'"
+
+
+r = fromRight $ parse rParser "" "(01|1*10|e)"
+rna = Eps.fromRegExp r
+rda = determinize rna
+rma = minimize rda
+
+allFAs :: (Alphabet a, Eq a) => RegExp a -> (Eps.EpsWordNFA Eps.CountableState a, WordDFA (DS.Set Eps.CountableState) a, WordDFA (DS.Set (DS.Set Eps.CountableState)) a)
+allFAs r = (na, da, ma)
+    where
+        na = Eps.fromRegExp r
+        da = determinize na
+        ma = minimize da
+
+runAll ::  (Alphabet a, Eq a) => Word a -> (Eps.EpsWordNFA Eps.CountableState a, WordDFA (DS.Set Eps.CountableState) a, WordDFA (DS.Set (DS.Set Eps.CountableState)) a) -> (Bool, Bool, Bool)
+runAll w (na,da,ma) = (automatonAccepts na w, automatonAccepts da w, automatonAccepts ma w)
+
+checkAll :: [String] -> String -> IO ()
+checkAll ss r = print re >> mapM_ checkSingle ss
+    where
+        re            = fromRight $ parse rParser "" r
+        (na, da, ma) = allFAs re
+        checkSingle s = let w               = parseAlphString s
+                            (nab, dab, mab) = runAll w (na, da, ma)
+                        in putStrLn $ s ++ ":\t" ++ "NFA: " ++ show nab ++ "\tDFA: " ++ show dab ++ "\tMDFA: " ++ show mab
 
 main :: IO ()
 main = do

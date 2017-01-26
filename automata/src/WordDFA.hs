@@ -39,10 +39,19 @@ runWordDFA :: (States s, Alphabet a) => WordDFA s a -> Word a -> s
 runWordDFA da = foldl (flip $ delta da) (start da)
 
 
+reachableStates :: (States s, Ord s, Alphabet a) => DS.Set s -> DeltaProto a s -> DS.Set s
+reachableStates ss d = stepClosure ss
+   where
+      stepClosure states = let reachable' = foldMap doOneStep states
+               in if DS.null (reachable' DS.\\ states)
+                  then states
+                  else stepClosure (DS.union states reachable')
+      doOneStep s = DS.fromList $ fmap (flip d s) allLetters
+
 determinize :: (States s, Ord s, Alphabet a) => Eps.EpsWordNFA s a -> WordDFA (DS.Set s) a
 determinize ena = WordDFA { start = start', delta = delta', acc = acc', states=states' }
     where
-        states' = powerset $ Eps.states ena
+        states' = reachableStates (DS.singleton start') delta'
         start' = doEpsTrans $ Eps.start ena
         acc'   = DS.filter (\ss -> not $ DS.null (Eps.acc ena `DS.intersection` ss)) states'
         delta' a = foldMap (doEpsTrans . Eps.delta ena a)
@@ -51,16 +60,10 @@ determinize ena = WordDFA { start = start', delta = delta', acc = acc', states=s
                         then states
                         else doEpsTrans (DS.union states reachable)
 
-
 minimize :: (States s, Ord s, Alphabet a) => WordDFA s a -> WordDFA (DS.Set s) a
 minimize da = WordDFA { delta=delta', start=start', acc=acc', states=states' }
     where
-        reachable = stepClosure (DS.singleton $ start da)
-        stepClosure states = let reachable' = foldMap doOneStep states
-                in if DS.null (reachable' DS.\\ states)
-                    then states
-                    else stepClosure (DS.union states reachable')
-        doOneStep s = DS.fromList $ fmap (flip (delta da) s) allLetters
+        reachable = reachableStates (DS.singleton $ start da) (delta da)
         refine p w = if DS.null w
                      then p
                      else let (a, w')   = DS.deleteFindMin w
