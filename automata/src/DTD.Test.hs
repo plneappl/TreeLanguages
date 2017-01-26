@@ -17,12 +17,12 @@ char' = (>>= (return . toChars)) . char
         toChars = toEnum . (+ (-97)) . fromEnum
 
 test :: String -> IO ()
-test s = putStr $ case parse (regExp (void $ char 'e') (char 'a')) "" s of
+test s = putStr $ case parse (regExp (void $ char 'e') (char 'a') >>= \r -> eof >> return r) "" s of
                       Left e -> "----------Failure in pattern " ++ s ++ ":\n" ++ show e ++ "\n"
                       Right r -> "++++++++++Pattern " ++ s ++ " yields:\n" ++ show r ++ "\n"
 
 test' :: String -> IO ()
-test' s = putStr $ case parse (regExp (void $ char' 'e') (foldl1 (<|>) $ map char' $ filter (/='e') ['a'..'z'])) "" s of
+test' s = putStr $ case parse (regExp (void $ char' 'e') (foldl1 (<|>) $ map char' $ filter (/='e') ['a'..'z']) >>= \r -> eof >> return r) "" s of
                       Left e -> "----------Failure in pattern " ++ s ++ ":\n" ++ show e ++ "\n"
                       Right r -> "++++++++++Pattern " ++ s ++ " yields:\n" ++ show r ++ "\n"
 
