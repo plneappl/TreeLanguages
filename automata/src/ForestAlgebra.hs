@@ -1,6 +1,12 @@
 {-# LANGUAGE GADTs, TypeApplications #-}
 module ForestAlgebra where
 import RoseTree
+import DeterministicAutomaton
+import qualified Data.Set as DS
+import States
+import Alphabet
+import Lib
+import Control.Arrow (second)
 
 -- https://www.mimuw.edu.pl/~bojan/upload/confbirthdayBojanczykW08.pdf
 -- section 3:
@@ -17,11 +23,13 @@ data Morph h v g w where
     β :: v -> w
   } -> Morph h v g w
  
+type MorphFFA a h v = Morph (Forest a) (Context a) h v
+
 morphFromBeta :: (Monoid h, Monoid v, Monoid g, Monoid w) => ForestAlgebra h v -> ForestAlgebra g w -> (v -> w) -> Morph h v g w
 morphFromBeta f1 f2 beta = MFA { α = alpha, β = beta } where
   alpha h = act f2 mempty (beta (inₗ f1 h)) 
 
-morphFromFun :: (Monoid h, Monoid v) => ForestAlgebra h v -> (a -> v) -> Morph (Forest a) (Context a) h v
+morphFromFun :: (Monoid h, Monoid v) => ForestAlgebra h v -> (a -> v) -> MorphFFA a h v
 morphFromFun fa f = MFA { α = alpha, β = beta } where
   alpha (Forest ts) = foldMap alpha' ts
 
@@ -29,15 +37,58 @@ morphFromFun fa f = MFA { α = alpha, β = beta } where
   alpha' (Br a t) = act fa (alpha $ Forest t) (f a)
 
   beta (Context (Forest []) c (Forest [])) = beta' c
-  beta (Context t1 c t2) = (inₗ fa (alpha t1)) `mappend` (inᵣ fa (alpha t2)) `mappend` (beta' c)
+  beta (Context t1 c t2) = inₗ fa (alpha t1) `mappend` inᵣ fa (alpha t2) `mappend` beta' c
 
   beta' (CTree []) = mempty
-  beta' (CTree ((f1, a, f2):cs)) = (f a) `mappend` beta (Context f1 (CTree cs) f2)
+  beta' (CTree ((f1, a, f2):cs)) = f a `mappend` beta (Context f1 (CTree cs) f2)
 
 type FreeForestAlgebra a = ForestAlgebra (Forest a) (Context a)
 freeForestAlgebra :: FreeForestAlgebra a
 freeForestAlgebra = FA {
-    act = \ forest contxt -> insertForest contxt forest
+    act = flip insertForest
   , inₗ = \f -> Context f mempty mempty
   , inᵣ = \f -> Context mempty mempty f
 }
+
+-- http://www.labri.fr/perso/igw/Papers/igw-bordeaux07.pdf
+
+fromDTA :: (Ord s) => DeterministicAutomaton s a -> (ForestAlgebra s (s -> s), MorphFFA a s (s -> s))
+fromDTA (DA delta acc) = (fa, morphFromFun fa delta) where
+  fa = FA { act = actF, inₗ = in_l, inᵣ = in_r }
+  actF = flip ($)
+  in_l = mappend 
+  in_r = flip mappend
+
+-- The presentation says 
+-- δ a h = act h (β a), but β :: Context a -> v.
+-- So... construct a context out of a? and then believe that act produces a single tree?
+
+toDTA :: (Alphabet a, States h) => MorphFFA a h v -> ForestAlgebra h v -> DS.Set h -> DeterministicAutomaton h a
+toDTA (MFA alpha beta) fa acc' = DA {
+  delta = dt,
+  acc = acc'
+} where
+  ffa = freeForestAlgebra
+  dt a h = act fa h $ beta $ Context mempty (CTree [(mempty, a, mempty)]) mempty
+
+-- not needed right now, might be something we need later on
+{-type FunL a b = [(a, b)]
+type EndoFunL a = FunL a a
+
+combine :: Eq b => [FunL a b] -> [FunL b c] -> [FunL a c]
+combine = pairsWith chain
+
+chain :: Eq b => FunL a b -> FunL b c -> FunL a c
+chain f1 f2 = map (second (appl f2)) f1
+
+plus :: (Eq s) => EndoFunL s -> [EndoFunL (EndoFunL s)] -> EndoFunL s -> [EndoFunL (EndoFunL s)]
+plus h1 vs h2 = map (\v -> map (\(x, vx) -> (x, h1 `chain` vx `chain` h2)) v) vs 
+
+appl :: Eq a => FunL a b -> a -> b
+appl ((a, b):fs) a' | a == a' = b
+                    | otherwise = appl fs a'
+
+finiteFunToTuples :: [a] -> (a -> b) -> FunL a b
+finiteFunToTuples as f = map (\a -> (a, f a)) as-}
+
+

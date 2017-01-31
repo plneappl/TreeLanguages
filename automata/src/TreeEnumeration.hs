@@ -4,26 +4,13 @@ import Alphabet
 import Data.List
 import RoseTree
 import Data.Tagged
+import Lib
   
 treesOfSizeAtMost :: (Alphabet a, Enum a, Bounded a) => Int -> [RT a]
 treesOfSizeAtMost 0 = []
 treesOfSizeAtMost k = flatTrees k ++ concatMap (\l -> map (Br l) $ subsequences $ treesOfSizeAtMost (k - 1)) [minBound..]
 
--- http://stackoverflow.com/questions/7141287/haskell-cartesian-product-of-infinite-lists
-diagonal :: [[a]] -> [a]
-diagonal = concat . stripe
-  where
-  stripe [] = []
-  stripe ([]:xss) = stripe xss
-  stripe ((x:xs):xss) = [x] : zipCons xs (stripe xss)
 
-  zipCons [] ys = ys
-  zipCons xs [] = map (:[]) xs
-  zipCons (x:xs) (y:ys) = (x:y) : zipCons xs ys
-
--- works with infinite lists
-pairs :: [a] -> [b] -> [(a, b)]
-pairs as bs = diagonal [[(a, b) | a <- as] | b <- bs]
 
 allTrees :: (Alphabet a) => Tagged a [RT a]
 allTrees = do

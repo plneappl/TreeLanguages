@@ -1,4 +1,4 @@
-{-# LANGUAGE GeneralizedNewtypeDeriving #-}
+{-# LANGUAGE GeneralizedNewtypeDeriving, TypeSynonymInstances, FlexibleInstances #-}
 
 module States where
 
@@ -33,6 +33,8 @@ instance (Monoid m, Ord m) => Monoid (NonDetSimulation m) where
     mempty = NonDetSimulation $ DS.singleton mempty
     ls `mappend` rs = NonDetSimulation $
                         foldMap (\l -> DS.map (l `mappend`) $ ndStates rs) $ ndStates ls
+
+
 
 --  data Foo = A | B | C | D | Z | O
     --  deriving (Show,Eq,Ord)

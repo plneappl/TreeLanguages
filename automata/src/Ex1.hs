@@ -10,6 +10,7 @@ import qualified NonDeterministicAutomaton as NA
 import Automaton
 import Data.Set
 import qualified Data.List as DL
+import ForestAlgebra
 
 data Alph = A | B | F deriving (Show, Eq, Ord)
 instance Alphabet Alph where
@@ -62,6 +63,17 @@ ex1_1 = Br F [Br F [Lf A, Lf A], Br F [Lf B, Lf B]]
 
 ex1_2 = Br F [Br F [Br F [Lf B, Lf B, Br F [Lf B, Lf B]], Br F [Lf B, Lf B, Br F [Lf B, Lf B]]], Br F [Lf B, Lf B, Br F [Lf B, Lf B]]]
 
+da_fa_m :: (ForestAlgebra Sts (Sts -> Sts), Morph (Forest Alph) (Context Alph) Sts (Sts -> Sts))
+da_fa_m = fromDTA da
+
+da_fa :: ForestAlgebra Sts (Sts -> Sts)
+da_fa = fst da_fa_m
+
+da_m :: Morph (Forest Alph) (Context Alph) Sts (Sts -> Sts)
+da_m = snd da_fa_m
+
+da_toAndFrom :: DA.DeterministicAutomaton Sts Alph
+da_toAndFrom = toDTA da_m da_fa (singleton Y)
 
 main :: IO()
 main = do
@@ -87,4 +99,13 @@ main = do
     "didn't accept")
   automatonAcceptsIO na ex1_2
   putStrLn $ DL.intercalate "\n" $ DL.map show $ take 100 $ allAcceptedTrees da
+  print ""
+  print "Forest Algebra:"
+  print (α da_m $ Forest $ (:[]) ex1_1)
+  print "Forest Algebra:"
+  print (α da_m $ Forest $ (:[]) ex1_2)
+  print "and back again:"
+  automatonAcceptsIO da ex1_1
+  automatonAcceptsIO da ex1_2
+  
 

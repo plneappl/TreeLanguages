@@ -9,7 +9,6 @@ import Alphabet
 import States
 import NonDeterministicAutomaton (NonDeterministicAutomaton(NA))
 import Automaton
-import Lib
 import Data.Set
 import qualified Data.Foldable as DF
 
@@ -21,9 +20,9 @@ data DeterministicAutomaton s a where
 
 type DeltaProto a s = a -> s -> s
 
-runDeterministicAutomaton :: (Monoid s) => DeterministicAutomaton s a -> RT a -> s
-runDeterministicAutomaton da (Br a rs) = delta da a (DF.foldMap (runDeterministicAutomaton da) rs)
-runDeterministicAutomaton da (Lf a) = delta da a mempty
+runDeterministicAutomaton :: DeterministicAutomaton s a -> RT a -> s
+runDeterministicAutomaton da@(DA delt _) (Br a rs) = delt a (DF.foldMap (runDeterministicAutomaton da) rs)
+runDeterministicAutomaton (DA delt _) (Lf a) = delt a mempty
 
 instance (States s, Eq s, Monoid s) => Automaton (DeterministicAutomaton s) where
   automatonAccepts da rt = runDeterministicAutomaton da rt `elem` acc da
