@@ -56,7 +56,7 @@ na :: NA.NonDeterministicAutomaton Sts Alph
 na = NA.NA d1 (singleton Y)
 
 da :: DA.DeterministicAutomaton Sts Alph
-da = DA.DA d2 (singleton Y)
+da = DA.DA d2 (singleton Y) allStates
 
 ex1_1, ex1_2 :: RT Alph
 ex1_1 = Br F [Br F [Lf A, Lf A], Br F [Lf B, Lf B]]
@@ -74,6 +74,10 @@ da_m = snd da_fa_m
 
 da_toAndFrom :: DA.DeterministicAutomaton Sts Alph
 da_toAndFrom = toDTA da_m da_fa (singleton Y)
+
+da_det = DA.determinize na
+da_min1 = DA.minimize da
+da_min2 = DA.minimize da_det
 
 main :: IO()
 main = do
@@ -105,7 +109,17 @@ main = do
   print "Forest Algebra:"
   print (α da_m $ Forest $ (:[]) ex1_2)
   print "and back again:"
-  automatonAcceptsIO da ex1_1
-  automatonAcceptsIO da ex1_2
+  automatonAcceptsIO da_toAndFrom ex1_1
+  automatonAcceptsIO da_toAndFrom ex1_2
+  print ""
+  print da
+  print $ da_min1
+  automatonAcceptsIO da_min1 ex1_1
+  automatonAcceptsIO da_min1 ex1_2
+  print ""
+  print da_det
+  print $ da_min2
+  automatonAcceptsIO da_min2 ex1_1
+  automatonAcceptsIO da_min2 ex1_2
   
 

@@ -53,7 +53,7 @@ freeForestAlgebra = FA {
 -- http://www.labri.fr/perso/igw/Papers/igw-bordeaux07.pdf
 
 fromDTA :: (Ord s) => DeterministicAutomaton s a -> (ForestAlgebra s (s -> s), MorphFFA a s (s -> s))
-fromDTA (DA delta acc) = (fa, morphFromFun fa delta) where
+fromDTA (DA delta acc _) = (fa, morphFromFun fa delta) where
   fa = FA { act = actF, inₗ = in_l, inᵣ = in_r }
   actF = flip ($)
   in_l = mappend 
@@ -66,29 +66,12 @@ fromDTA (DA delta acc) = (fa, morphFromFun fa delta) where
 toDTA :: (Alphabet a, States h) => MorphFFA a h v -> ForestAlgebra h v -> DS.Set h -> DeterministicAutomaton h a
 toDTA (MFA alpha beta) fa acc' = DA {
   delta = dt,
+  states = allStates,
   acc = acc'
 } where
   ffa = freeForestAlgebra
   dt a h = act fa h $ beta $ Context mempty (CTree [(mempty, a, mempty)]) mempty
 
--- not needed right now, might be something we need later on
-{-type FunL a b = [(a, b)]
-type EndoFunL a = FunL a a
 
-combine :: Eq b => [FunL a b] -> [FunL b c] -> [FunL a c]
-combine = pairsWith chain
-
-chain :: Eq b => FunL a b -> FunL b c -> FunL a c
-chain f1 f2 = map (second (appl f2)) f1
-
-plus :: (Eq s) => EndoFunL s -> [EndoFunL (EndoFunL s)] -> EndoFunL s -> [EndoFunL (EndoFunL s)]
-plus h1 vs h2 = map (\v -> map (\(x, vx) -> (x, h1 `chain` vx `chain` h2)) v) vs 
-
-appl :: Eq a => FunL a b -> a -> b
-appl ((a, b):fs) a' | a == a' = b
-                    | otherwise = appl fs a'
-
-finiteFunToTuples :: [a] -> (a -> b) -> FunL a b
-finiteFunToTuples as f = map (\a -> (a, f a)) as-}
 
 
