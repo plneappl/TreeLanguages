@@ -11,7 +11,8 @@ import qualified Data.Foldable as DF
 data NonDeterministicAutomaton s a where
   NA :: (Alphabet a, States s, HasEmptyState s, Monoid s) => {
     delta :: DeltaProto a s,
-    acc :: DS.Set s
+    acc :: DS.Set s,
+    states :: DS.Set s
   } -> NonDeterministicAutomaton s a
 
 type DeltaProto a s = a -> s -> DS.Set s

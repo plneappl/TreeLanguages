@@ -1,4 +1,4 @@
-{-# LANGUAGE GADTs, MultiParamTypeClasses, InstanceSigs, StandaloneDeriving #-}
+{-# LANGUAGE GADTs, MultiParamTypeClasses, InstanceSigs,  FlexibleInstances #-}
 
 module DeterministicAutomaton where
 
@@ -62,21 +62,44 @@ instance (States s, Eq s, Monoid s) => Automaton (ExplicitDTA s) where
   automatonAcceptsIO da rt = print $ if automatonAccepts da rt then "DTA accepted" else "DTA didn't accept"
 
 determinize :: (Eq s, Ord s, States s) => NonDeterministicAutomaton s a -> DeterministicAutomaton (NonDetSimulation s) a
-determinize (NA delta acc) = DA delta' acc' allStates where
-  acc' = map NonDetSimulation $ filter (\x -> any (`elem` x) acc) (allStates :: (States s, Ord s) => Set (Set s))
+determinize (NA { delta = delta, acc = acc, states = naStates }) = DA delta' acc' (map NonDetSimulation $ powerset naStates) where
+  acc' = map NonDetSimulation $ filter (\x -> any (`elem` x) acc) (powerset naStates)
   delta' a s = NonDetSimulation $ foldMap (delta a) s
 
+data EQRel s = EQRel {
+    allSubelements :: Set s
+  , classRelation :: Set (s, s)
+} deriving (Eq, Ord)
+
+data EQClass s = EQNeutral | EQClass {
+  elements :: Set s,
+  relation :: EQRel s
+} deriving (Eq, Ord)
+
+
+instance (States s) => States (EQClass s) 
+
+
+instance (Ord s, Monoid s) => Monoid (EQClass s) where
+  mempty = EQNeutral
+  mappend EQNeutral x = x
+  mappend x EQNeutral = x
+  mappend c1 c2 = let
+    e1 = elements c1
+    e2 = elements c2
+    rel = relation c1 in
+    eqClass rel $ mappend (elemAt 0 e1) (elemAt 0 e2)
+
 -- http://antoine.delignat-lavaud.fr/doc/report-M1.pdf
-minimize :: (Ord a, Ord s) => DeterministicAutomaton s a -> ExplicitDTA (Set s) a
-minimize da@DA { delta = delta0, acc = acc0 } = ExplicitDA { 
-  deltaH = delta', explAcc = acc', explStates = states', deltaV = joinClasses, s0 = eqClass' mempty } where
+minimize :: (Ord a, Ord s) => DeterministicAutomaton s a -> DeterministicAutomaton (EQClass s) a
+minimize da@DA { delta = delta0, acc = acc0 } = DA { 
+  delta = delta', acc = acc', states = states' } where
   reachSts = reachable da
   reachDTA = da { states = reachSts }
-  eqClass' = eqClass (states reachDTA) (computeEquivSlow reachDTA)
+  eqClass' = eqClass $ EQRel (states reachDTA) (computeEquivSlow reachDTA)
   acc' = map eqClass' acc0
   states' = map eqClass' reachSts
-  delta' a s = eqClass' $ delta0 a $ (elemAt 0) s
-  joinClasses c1 c2 = eqClass' $ mappend (elemAt 0 c1) (elemAt 0 c2)
+  delta' a s = eqClass' $ delta0 a $ elemAt 0 $ elements s
 
 reachable :: (Ord a, Ord s) => DeterministicAutomaton s a -> (Set s)
 reachable (DA delta acc _) = let
@@ -113,8 +136,10 @@ computeEquivSlow (DA delta acc sts) =
 
   result (ms, mq) = union (inv ms) (inv mq)
 
-eqClass :: (Ord s) => Set s -> Set (s, s) -> s -> Set s
-eqClass ss eqr s = filter (\s' -> s ~~ s' $ eqr) ss
+eqClass :: (Ord s) => EQRel s -> s -> EQClass s
+eqClass r@(EQRel ss eqr) s = EQClass {
+    elements = filter (\s' -> s ~~ s' $ eqr) ss
+  , relation = r }
 
 (~~) :: (Ord s) => s -> s -> Set (s, s) -> Bool
 (~~) s s' eqr = (s, s') `member` eqr || (s', s) `member` eqr
