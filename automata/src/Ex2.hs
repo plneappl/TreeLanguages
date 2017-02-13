@@ -79,7 +79,7 @@ main = do
   automatonAcceptsIO da_back ex2_3
 
   print $ reachable da
-  print da_min
+  --  print da_min
   automatonAcceptsIO da_min ex2_1
   automatonAcceptsIO da_min ex2_2
   automatonAcceptsIO da_min ex2_3

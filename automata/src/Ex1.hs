@@ -53,7 +53,7 @@ d2 F Y = Y
 d2 _ _ = N
 
 na :: NA.NonDeterministicAutomaton Sts Alph
-na = NA.NA d1 (singleton Y)
+na = NA.NA d1 (singleton Y) allStates
 
 da :: DA.DeterministicAutomaton Sts Alph
 da = DA.DA d2 (singleton Y) allStates
@@ -75,9 +75,9 @@ da_m = snd da_fa_m
 da_toAndFrom :: DA.DeterministicAutomaton Sts Alph
 da_toAndFrom = toDTA da_m da_fa (singleton Y)
 
-da_det = DA.determinize na
-da_min1 = DA.minimize da
-da_min2 = DA.minimize da_det
+--  da_det = DA.determinize na
+--  da_min1 = DA.minimize da
+--  da_min2 = DA.minimize da_det
 
 main :: IO()
 main = do
@@ -86,12 +86,12 @@ main = do
   print "NTA looking for an A:"
   print $ NA.runNonDeterministicAutomaton na ex1_1
   automatonAcceptsIO na ex1_1
-  print "Accepting stated of determinized NTA:"
-  print $ DA.acc $ DA.determinize na
-  print "determinized NTA looking for an A:"
-  print $ "det. NTA " ++ (if automatonAccepts (DA.determinize na) ex1_1 then "accepted" else
-    "didn't accept")
-  print $ DA.runDeterministicAutomaton (DA.determinize na) ex1_1
+  --  print "Accepting stated of determinized NTA:"
+  --  print $ DA.acc $ DA.determinize na
+  --  print "determinized NTA looking for an A:"
+  --  print $ "det. NTA " ++ (if automatonAccepts (DA.determinize na) ex1_1 then "accepted" else
+    --  "didn't accept")
+  --  print $ DA.runDeterministicAutomaton (DA.determinize na) ex1_1
   print "manual DTA looking for an A:"
   automatonAcceptsIO da ex1_1
   putStrLn ""
@@ -99,8 +99,8 @@ main = do
   printRT ex1_2
   automatonAcceptsIO da ex1_2
   print "determinized NTA looking for an A:"
-  print $ "det. NTA " ++ (if automatonAccepts (DA.determinize na) ex1_2 then "accepted" else
-    "didn't accept")
+  --  print $ "det. NTA " ++ (if automatonAccepts (DA.determinize na) ex1_2 then "accepted" else
+    --  "didn't accept")
   automatonAcceptsIO na ex1_2
   putStrLn $ DL.intercalate "\n" $ DL.map show $ take 100 $ allAcceptedTrees da
   print ""
@@ -113,13 +113,13 @@ main = do
   automatonAcceptsIO da_toAndFrom ex1_2
   print ""
   print da
-  print $ da_min1
-  automatonAcceptsIO da_min1 ex1_1
-  automatonAcceptsIO da_min1 ex1_2
-  print ""
-  print da_det
-  print $ da_min2
-  automatonAcceptsIO da_min2 ex1_1
-  automatonAcceptsIO da_min2 ex1_2
+  --  print $ da_min1
+  --  automatonAcceptsIO da_min1 ex1_1
+  --  automatonAcceptsIO da_min1 ex1_2
+  --  print ""
+  --  print da_det
+  --  print $ da_min2
+  --  automatonAcceptsIO da_min2 ex1_1
+  --  automatonAcceptsIO da_min2 ex1_2
   
 

@@ -61,10 +61,10 @@ instance (States s, Eq s, Monoid s) => Automaton (ExplicitDTA s) where
   automatonAccepts da rt = runExplicitDTA da rt `elem` explAcc da
   automatonAcceptsIO da rt = print $ if automatonAccepts da rt then "DTA accepted" else "DTA didn't accept"
 
-determinize :: (Eq s, Ord s, States s) => NonDeterministicAutomaton s a -> DeterministicAutomaton (NonDetSimulation s) a
-determinize (NA { delta = delta, acc = acc, states = naStates }) = DA delta' acc' (map NonDetSimulation $ powerset naStates) where
-  acc' = map NonDetSimulation $ filter (\x -> any (`elem` x) acc) (powerset naStates)
-  delta' a s = NonDetSimulation $ foldMap (delta a) s
+--  determinize :: (Eq s, Ord s, States s) => NonDeterministicAutomaton s a -> DeterministicAutomaton (NonDetSimulation s) a
+--  determinize (NA { delta = delta, acc = acc, states = naStates }) = DA delta' acc' (map NonDetSimulation $ powerset naStates) where
+  --  acc' = map NonDetSimulation $ filter (\x -> any (`elem` x) acc) (powerset naStates)
+  --  delta' a s = NonDetSimulation $ foldMap (delta a) s
 
 data EQRel s = EQRel {
     allSubelements :: Set s

@@ -1,4 +1,4 @@
-{-# LANGUAGE GADTs #-}
+{-# LANGUAGE GADTs, MultiParamTypeClasses, FlexibleInstances #-}
 
 module WordDFA where
 
@@ -23,12 +23,11 @@ data WordDFA s a where
 
 type DeltaProto a s = a -> s -> s
 
---  data MinWordDFA s a where
-    --  MinWordDFA :: (Alphabet a, States s) => {
-        --  automaton :: WordDFA s a,
-        --  usedStates :: DS.Set s,
-        --  unusedStates :: DS.Set s
-    --  } -> MinWordDFA s a
+class (States s, Alphabet a) => SimpleAut s a where
+    simpleAut :: WordDFA s a
+
+instance (States s, Alphabet a) => SimpleAut s a where
+    simpleAut = WordDFA { delta = const id, start = (DS.findMin allStates), acc = DS.empty, states = allStates }
 
 instance (States s, Ord s) => WordAutomaton (WordDFA s) where
   automatonAccepts da word = runWordDFA da word `DS.member` acc da

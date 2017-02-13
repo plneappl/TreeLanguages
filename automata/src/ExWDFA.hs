@@ -6,44 +6,63 @@ import WordAutomaton
 import WordDFA
 import qualified EpsWordNFA as Eps
 
+import qualified TransMonoid as TR
+
 import ParseRegExp
 import Parser
 import Control.Monad
 
 import qualified Data.Set as DS
 
+import Data.Foldable (foldMap)
+
 import Lib
 
-data Sts = Z | O | Tw | Thr | F
+data Sts = SZ | SO | Tw | Thr | SF
     deriving (Show,Eq,Ord,Enum)
 instance States Sts where
-    allStates = DS.fromList [Z .. F]
+    allStates = DS.fromList [SZ .. SF]
 
 data Alph = AZ | AO
     deriving (Show,Eq,Ord,Enum)
 instance Alphabet Alph where
     allLetters = [AZ, AO]
 
+data Chars = A | B | C | D | E | F | G | H | I | J | K | L | M
+           | N | O | P | Q | R | S | T | U | V | W | X | Y | Z
+           deriving (Show,Ord,Eq,Enum)
+instance Alphabet Chars where
+    allLetters = [ A .. Z ]
+
 -- w \in L <=> w \equiv 2 mod 5
 da :: WordDFA Sts Alph
-da = WordDFA { acc = DS.singleton Tw, delta = d, start = Z, states = allStates}
+da = WordDFA { acc = DS.singleton Tw, delta = d, start = SZ, states = allStates}
     where
-        d AZ Z   = Z
-        d AO Z   = O
-        d AZ O   = Tw
-        d AO O   = Thr
-        d AZ Tw  = F
-        d AO Tw  = Z
-        d AZ Thr = O
+        d AZ SZ  = SZ
+        d AO SZ  = SO
+        d AZ SO  = Tw
+        d AO SO  = Thr
+        d AZ Tw  = SF
+        d AO Tw  = SZ
+        d AZ Thr = SO
         d AO Thr = Tw
-        d AZ F   = Thr
-        d AO F   = F
+        d AZ SF   = Thr
+        d AO SF   = SF
 
 parseAlphString :: String -> Word Alph
 parseAlphString = fmap toAlph
     where toAlph '0' = AZ
           toAlph '1' = AO
           toAlph _   = error "Input must consist of 0 and 1"
+
+toChars :: Char -> Chars
+toChars = toEnum . (+ (-97)) . fromEnum
+
+char' :: Char -> Parser Chars
+char' = (>>= (return . toChars)) . char
+
+parseCharsString :: String -> Word Chars
+parseCharsString = fmap toChars
 
 --      _0_
 --      |  |
@@ -52,14 +71,14 @@ parseAlphString = fmap toAlph
 -- \__ε_/
 
 ena :: Eps.EpsWordNFA Sts Alph
-ena = Eps.EpsWNFA { Eps.delta = d, Eps.epsDelta = ed, Eps.start = DS.singleton Z, Eps.acc = DS.singleton Tw, Eps.states = allStates }
+ena = Eps.EpsWNFA { Eps.delta = d, Eps.epsDelta = ed, Eps.start = DS.singleton SZ, Eps.acc = DS.singleton Tw, Eps.states = allStates }
     where
-        d AO Z = DS.fromList [O]
-        d AZ O = DS.fromList [O,Tw]
+        d AO SZ = DS.fromList [SO]
+        d AZ SO = DS.fromList [SO,Tw]
         d _  _ = DS.empty
         --  ed Z = DS.singleton O
         --  ed Z = DS.fromList [O,Tw]
-        ed Z = DS.fromList [O]
+        ed SZ = DS.fromList [SO]
         --  ed O = DS.fromList [Z, O, Tw]
         ed _ = DS.empty
 
@@ -76,18 +95,18 @@ ma' = minimize da'
 da'' :: WordDFA Sts Alph
 da'' = WordDFA { delta=d, start=s, acc=a, states=allStates }
    where
-      s = Z
-      a = DS.fromList [ Tw, F ]
-      d AZ Z   = Thr
-      d AO Z   = O
-      d AZ O   = Tw
-      d AO O   = Tw
+      s = SZ
+      a = DS.fromList [ Tw, SF ]
+      d AZ SZ   = Thr
+      d AO SZ   = SO
+      d AZ SO   = Tw
+      d AO SO   = Tw
       d AZ Tw  = Tw
-      d AO Tw  = O
-      d AZ Thr = F
-      d AO Thr = F
-      d AZ F   = F
-      d AO F   = Thr
+      d AO Tw  = SO
+      d AZ Thr = SF
+      d AO Thr = SF
+      d AZ SF   = SF
+      d AO SF   = Thr
 
 --           v------1----\
 -- o----1--->o------*--->o
@@ -97,12 +116,24 @@ ma'' = minimize da''
 allWords :: [String]
 allWords = "" : concatMap (\s -> ['0':s, '1':s]) allWords
 
+allWords' :: [String]
+allWords' = "" : concatMap (\s -> fmap (:s) ['a' .. 'z']) allWords'
+
 ------------------------
 ---- using regExp ------
 ------------------------
 
 rParser :: Parser (RegExp Alph)
-rParser = regExp (void $ char 'e') (choice [ char '0' >> return AZ, char '1' >> return AO ])
+rParser = do
+    r <- regExp (void $ char 'e') (choice [ char '0' >> return AZ, char '1' >> return AO ])
+    eof
+    return r
+
+rParser' :: Parser (RegExp Chars)
+rParser' = do
+    r <- regExp (void $ char '0') (choice $ fmap char' ['a' .. 'z'])
+    eof
+    return r
 
 fromRight :: Either a b -> b
 fromRight (Right x) = x
@@ -113,6 +144,15 @@ r = fromRight $ parse rParser "" "(01|1*10|e)"
 rna = Eps.fromRegExp r
 rda = determinize rna
 rma = minimize rda
+
+--  trans :: FullTransMonoid 
+trans = TR.transMonoid rma
+
+morph :: [ Alph ] -> TR.TransMonoid (DS.Set (DS.Set Eps.CountableState)) Alph
+morph [] = TR.zero trans
+morph as = foldMap simpleFunc as
+   where
+      simpleFunc a = TR.TM { TR.aut = rma, TR.dom = fmap (delta rma a) (TR.dom $ TR.zero trans), TR.trans = delta rma a }
 
 allFAs :: (Alphabet a, Eq a) => RegExp a -> (Eps.EpsWordNFA Eps.CountableState a, WordDFA (DS.Set Eps.CountableState) a, WordDFA (DS.Set (DS.Set Eps.CountableState)) a)
 allFAs r = (na, da, ma)
@@ -130,6 +170,15 @@ checkAll ss r = print re >> mapM_ checkSingle ss
         re            = fromRight $ parse rParser "" r
         (na, da, ma) = allFAs re
         checkSingle s = let w               = parseAlphString s
+                            (nab, dab, mab) = runAll w (na, da, ma)
+                        in putStrLn $ s ++ ":\t" ++ "NFA: " ++ show nab ++ "\tDFA: " ++ show dab ++ "\tMDFA: " ++ show mab
+
+checkAll' :: [String] -> String -> IO ()
+checkAll' ss r = print re >> mapM_ checkSingle ss
+    where
+        re            = fromRight $ parse rParser' "" r
+        (na, da, ma) = allFAs re
+        checkSingle s = let w               = parseCharsString s
                             (nab, dab, mab) = runAll w (na, da, ma)
                         in putStrLn $ s ++ ":\t" ++ "NFA: " ++ show nab ++ "\tDFA: " ++ show dab ++ "\tMDFA: " ++ show mab
 
