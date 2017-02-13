@@ -20,7 +20,7 @@ simpleTree = do
     char ')'
     return $ Br () ts
 
-data Translator a = Translator { node :: Parser a, tEmpty :: Parser (), startMark :: Parser (), endMark :: Parser ()}
+data Translator a = Translator { node :: Parser a, tEmpty :: Parser (), startMark :: Parser (), endMark :: Parser (), tSep :: Parser () }
 
 tree :: (Eq a,Show a) => Translator a -> Parser (RT a)
 tree trans = do
@@ -33,21 +33,23 @@ tree trans = do
 forest :: (Eq a,Show a) => Translator a -> Parser (Forest a)
 forest trans = do
     let emptyForest = tEmpty trans >> return mempty
-        treeParse = do
-            l <- node trans
-            f <- forest trans
-            return $ case trees f of
-                            [] -> Forest [Lf l]
-                            ts -> Forest [Br l ts]
+        --  treeParse = do
+            --  l <- node trans
+            --  f <- forest trans
+            --  return $ case trees f of
+                            --  [] -> Forest [Lf l]
+                            --  ts -> Forest [Br l ts]
+        treeParse = fmap (Forest . (:[])) (tree trans)
         forestParse = do
             startMark trans
-            ts <- many $ tree trans
+            --  ts <- many $ tree trans
+            ts <- sepBy (tree trans) (tSep trans)
             endMark trans
             return $ Forest ts
     choice $ fmap try [emptyForest, treeParse, forestParse]
 
 letters :: Translator Char
-letters = Translator letter (void (char '0')) (void (char '(')) (void (char ')'))
+letters = Translator letter (void (char '0')) (void (char '(')) (void (char ')')) (void (char '+'))
 
 forest' = forest letters
 tree' = tree letters
@@ -63,8 +65,9 @@ someLetterChars = do
 someLetterEmpty = void $ char '0'
 someLetterStart = void $ char '('
 someLetterEnd = void $ char ')'
+someLetterSep = void $ char '+'
 someLetters :: Translator SomeLetters
-someLetters = Translator someLetterChars someLetterEmpty someLetterStart someLetterEnd
+someLetters = Translator someLetterChars someLetterEmpty someLetterStart someLetterEnd someLetterSep
 
 tree'' = tree someLetters
 forest'' = forest someLetters
@@ -88,14 +91,27 @@ testForest' = testForests forest'
 
 main :: IO ()
 main = do
-    testSimple "(()())"
-    testSimple "((()(()))())"
+    --  testSimple "(()())"
+    --  testSimple "((()(()))())"
+    --  putStr "============ Trees =============\n"
+    --  testTree' "ab(d()ab()c())"
+    --  testTree'' "ab(d()ab()c())"
+    --  testTree' "a(b()c()foobar())"
+    --  testTree'' "a(b()c()foobar())"
+    --  putStr "============ Forests =============\n"
+    --  testForest' "(a()b())"
+    --  testForest' "(a(bc(d0e())))"
+    --  testForest' "(a0b0)"
+    --  testForest' "()"
+    --  testForest' "(a()x()va())"
     putStr "============ Trees =============\n"
-    testTree' "ab(d()ab()c())"
-    testTree'' "ab(d()ab()c())"
-    testTree' "a(b()c()foobar())"
-    testTree'' "a(b()c()foobar())"
+    testTree' "ab(d()+ab()+c())"
+    testTree'' "ab(d()+ab()+c())"
+    testTree' "a(b()+c()+foobar())"
+    testTree'' "a(b()+c()+foobar())"
     putStr "============ Forests =============\n"
-    testForest' "(a()b())"
+    testForest' "(a()+b())"
+    testForest' "(a(bc(d0+e())))"
+    testForest' "(a0+b0)"
     testForest' "()"
-    testForest' "(a()x()va())"
+    testForest' "(a()+x()+va())"
