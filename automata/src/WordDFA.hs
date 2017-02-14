@@ -14,7 +14,7 @@ import Lib
 import Data.Equivalence.Monad
 
 data WordDFA s a where
-  WordDFA :: (Alphabet a, States s) => {
+  WordDFA :: (Alphabet a) => {
     delta :: DeltaProto a s,
     start :: s,
     acc :: DS.Set s,
@@ -23,22 +23,23 @@ data WordDFA s a where
 
 type DeltaProto a s = a -> s -> s
 
-class (States s, Alphabet a) => SimpleAut s a where
-    simpleAut :: WordDFA s a
+data SimpleAut s a = SimpleAut {
+  simpleAut :: WordDFA s a
+}
 
-instance (States s, Alphabet a) => SimpleAut s a where
-    simpleAut = WordDFA { delta = const id, start = (DS.findMin allStates), acc = DS.empty, states = allStates }
+fromStates :: Alphabet a => States s -> SimpleAut s a
+fromStates s = SimpleAut $ WordDFA { delta = const id, start = (DS.findMin $ allStates s), acc = DS.empty, states = allStates s }
 
-instance (States s, Ord s) => WordAutomaton (WordDFA s) where
+instance (Ord s) => WordAutomaton (WordDFA s) where
   automatonAccepts da word = runWordDFA da word `DS.member` acc da
   automatonAcceptsIO da word = print $ if automatonAccepts da word then "DFA accepted" else "DFA didn't accept"
 
 --  runEpsWordNFA :: (Ord s, States s, HasEmptyState s) => EpsWordNFA s a -> Word a -> DS.Set s
-runWordDFA :: (States s, Alphabet a) => WordDFA s a -> Word a -> s
+runWordDFA :: (Alphabet a) => WordDFA s a -> Word a -> s
 runWordDFA da = foldl (flip $ delta da) (start da)
 
 
-reachableStates :: (States s, Ord s, Alphabet a) => DS.Set s -> DeltaProto a s -> DS.Set s
+reachableStates :: (Ord s, Alphabet a) => DS.Set s -> DeltaProto a s -> DS.Set s
 reachableStates ss d = stepClosure ss
    where
       stepClosure states = let reachable' = foldMap doOneStep states
@@ -47,7 +48,7 @@ reachableStates ss d = stepClosure ss
                   else stepClosure (DS.union states reachable')
       doOneStep s = DS.fromList $ fmap (flip d s) allLetters
 
-determinize :: (States s, Ord s, Alphabet a) => Eps.EpsWordNFA s a -> WordDFA (DS.Set s) a
+determinize :: (Ord s, Alphabet a) => Eps.EpsWordNFA s a -> WordDFA (DS.Set s) a
 determinize ena = WordDFA { start = start', delta = delta', acc = acc', states=states' }
     where
         states' = reachableStates (DS.singleton start') delta'
@@ -59,7 +60,7 @@ determinize ena = WordDFA { start = start', delta = delta', acc = acc', states=s
                         then states
                         else doEpsTrans (DS.union states reachable)
 
-minimize :: (States s, Ord s, Alphabet a) => WordDFA s a -> WordDFA (DS.Set s) a
+minimize :: (Ord s, Alphabet a) => WordDFA s a -> WordDFA (DS.Set s) a
 minimize da = WordDFA { delta=delta', start=start', acc=acc', states=states' }
     where
         reachable = reachableStates (DS.singleton $ start da) (delta da)

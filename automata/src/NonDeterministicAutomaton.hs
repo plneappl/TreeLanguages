@@ -9,19 +9,19 @@ import qualified Data.Set as DS
 import qualified Data.Foldable as DF
 
 data NonDeterministicAutomaton s a where
-  NA :: (Alphabet a, States s, HasEmptyState s, Monoid s) => {
+  NA :: (Alphabet a, HasEmptyState s, Monoid s) => {
     delta :: DeltaProto a s,
     acc :: DS.Set s,
-    states :: DS.Set s
+    states :: States s
   } -> NonDeterministicAutomaton s a
 
 type DeltaProto a s = a -> s -> DS.Set s
 
-instance (States s, Ord s, HasEmptyState s, Monoid s) => Automaton (NonDeterministicAutomaton s) where
+instance (Ord s, HasEmptyState s, Monoid s) => Automaton (NonDeterministicAutomaton s) where
   automatonAccepts na rt = (runNonDeterministicAutomaton na rt `DS.intersection` acc na) /= DS.empty
   automatonAcceptsIO da rt = print $ if automatonAccepts da rt then "NTA accepted" else "NTA didn't accept"
 
-runNonDeterministicAutomaton :: (Ord s, States s, HasEmptyState s, Monoid s) => NonDeterministicAutomaton s a -> RT a -> DS.Set s
+runNonDeterministicAutomaton :: (Ord s, HasEmptyState s, Monoid s) => NonDeterministicAutomaton s a -> RT a -> DS.Set s
 runNonDeterministicAutomaton na (Lf a) = delta na a mempty
 runNonDeterministicAutomaton na (Br a rs) = let
   substatesSets = map (NonDetSimulation . runNonDeterministicAutomaton na) rs

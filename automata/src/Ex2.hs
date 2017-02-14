@@ -25,8 +25,8 @@ ex2_3 = Br F [Lf A, Lf A, Lf A, Lf A, Lf B, Lf B, Lf B, Lf B]
 
 data Sts = N | Y | SA | SB | SY | Ntr
     deriving (Show,Eq,Ord,Enum)
-instance States Sts where
-    allStates = DS.fromList [N .. Ntr]
+_States_Sts :: States Sts
+_States_Sts = States $ DS.fromList [N .. Ntr]
 
 instance Monoid Sts where
     mempty = Ntr
@@ -55,10 +55,10 @@ d F SY = Y
 d _ _ = N
 
 da :: DeterministicAutomaton Sts Alph
-da = DA d (DS.singleton Y) allStates
+da = DA d (DS.singleton Y) _States_Sts
 
 da_fa = fromDTA da
-da_back = toDTA (snd da_fa) (fst da_fa) (DS.singleton Y)
+da_back = toDTA _States_Sts (snd da_fa) (fst da_fa) (DS.singleton Y)
 
 da_min = minimize da
 

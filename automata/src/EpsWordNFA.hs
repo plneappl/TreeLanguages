@@ -12,7 +12,7 @@ import RegExp
 
 data EpsWordNFA s a where
   --  EpsWNFA :: (Alphabet a, States s, HasEmptyState s) => {
-  EpsWNFA :: (Alphabet a, States s) => {
+  EpsWNFA :: Alphabet a => {
     delta :: EpsDeltaProto a s,
     epsDelta :: s -> DS.Set s,
     start :: DS.Set s,
@@ -23,12 +23,12 @@ data EpsWordNFA s a where
 type EpsDeltaProto a s = a -> s -> DS.Set s
 
 --  instance (States s, Ord s, HasEmptyState s) => WordAutomaton (EpsWordNFA s) where
-instance (States s, Ord s) => WordAutomaton (EpsWordNFA s) where
+instance (Ord s) => WordAutomaton (EpsWordNFA s) where
   automatonAccepts na word = (runEpsWordNFA na word `DS.intersection` acc na) /= DS.empty
   automatonAcceptsIO da word = print $ if automatonAccepts da word then "NFA accepted" else "NFA didn't accept"
 
 --  runEpsWordNFA :: (Ord s, States s, HasEmptyState s) => EpsWordNFA s a -> Word a -> DS.Set s
-runEpsWordNFA :: (Ord s, States s, Alphabet a) => EpsWordNFA s a -> Word a -> DS.Set s
+runEpsWordNFA :: (Ord s, Alphabet a) => EpsWordNFA s a -> Word a -> DS.Set s
 runEpsWordNFA na = foldl applyTransition (doEpsTrans $ start na)
     where
         applyTransition states letter =
@@ -63,8 +63,11 @@ runEpsWordNFA na = foldl applyTransition (doEpsTrans $ start na)
 
 data CountableState = CState Int deriving (Eq,Show,Ord)
 
-instance States CountableState where
-    allStates = DS.fromList $ fmap CState [1..]
+instance StatesC CountableState where
+    allStatesC = DS.fromList $ fmap CState [1..]
+
+_States_Cntbl :: States CountableState
+_States_Cntbl = States $ DS.fromList $ fmap CState [1..]
 
 cStatesTill :: Int -> DS.Set CountableState
 cStatesTill n = DS.fromList $ fmap CState [0..n]

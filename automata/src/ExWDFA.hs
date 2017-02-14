@@ -20,8 +20,8 @@ import Lib
 
 data Sts = SZ | SO | Tw | Thr | SF
     deriving (Show,Eq,Ord,Enum)
-instance States Sts where
-    allStates = DS.fromList [SZ .. SF]
+_States_Sts :: States Sts
+_States_Sts = States $ DS.fromList [SZ .. SF]
 
 data Alph = AZ | AO
     deriving (Show,Eq,Ord,Enum)
@@ -36,7 +36,7 @@ instance Alphabet Chars where
 
 -- w \in L <=> w \equiv 2 mod 5
 da :: WordDFA Sts Alph
-da = WordDFA { acc = DS.singleton Tw, delta = d, start = SZ, states = allStates}
+da = WordDFA { acc = DS.singleton Tw, delta = d, start = SZ, states = allStates _States_Sts }
     where
         d AZ SZ  = SZ
         d AO SZ  = SO
@@ -71,7 +71,7 @@ parseCharsString = fmap toChars
 -- \__ε_/
 
 ena :: Eps.EpsWordNFA Sts Alph
-ena = Eps.EpsWNFA { Eps.delta = d, Eps.epsDelta = ed, Eps.start = DS.singleton SZ, Eps.acc = DS.singleton Tw, Eps.states = allStates }
+ena = Eps.EpsWNFA { Eps.delta = d, Eps.epsDelta = ed, Eps.start = DS.singleton SZ, Eps.acc = DS.singleton Tw, Eps.states = allStates _States_Sts }
     where
         d AO SZ = DS.fromList [SO]
         d AZ SO = DS.fromList [SO,Tw]
@@ -93,7 +93,7 @@ ma' = minimize da'
 --  \___0___>o------*--->o
 --           ^------1----/
 da'' :: WordDFA Sts Alph
-da'' = WordDFA { delta=d, start=s, acc=a, states=allStates }
+da'' = WordDFA { delta=d, start=s, acc=a, states = allStates _States_Sts }
    where
       s = SZ
       a = DS.fromList [ Tw, SF ]

@@ -19,8 +19,8 @@ instance Alphabet Alph where
 
 data Sts = Y | N | E deriving (Show, Eq, Ord)
 
-instance States Sts where
-  allStates = fromList [Y, N, E]
+_States_Sts :: States Sts
+_States_Sts = States $ fromList [Y, N, E]
 instance HasEmptyState Sts where
   emptyState = E
 instance Monoid Sts where
@@ -53,10 +53,10 @@ d2 F Y = Y
 d2 _ _ = N
 
 na :: NA.NonDeterministicAutomaton Sts Alph
-na = NA.NA d1 (singleton Y) allStates
+na = NA.NA d1 (singleton Y) _States_Sts
 
 da :: DA.DeterministicAutomaton Sts Alph
-da = DA.DA d2 (singleton Y) allStates
+da = DA.DA d2 (singleton Y) _States_Sts
 
 ex1_1, ex1_2 :: RT Alph
 ex1_1 = Br F [Br F [Lf A, Lf A], Br F [Lf B, Lf B]]
@@ -73,7 +73,7 @@ da_m :: Morph (Forest Alph) (Context Alph) Sts (Sts -> Sts)
 da_m = snd da_fa_m
 
 da_toAndFrom :: DA.DeterministicAutomaton Sts Alph
-da_toAndFrom = toDTA da_m da_fa (singleton Y)
+da_toAndFrom = toDTA (DA.states da) da_m da_fa (singleton Y)
 
 --  da_det = DA.determinize na
 --  da_min1 = DA.minimize da

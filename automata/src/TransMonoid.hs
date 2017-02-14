@@ -10,7 +10,7 @@ import qualified Data.Set as DS
 data TransMonoid s a =
     TM {aut :: WordDFA s a, dom :: [s], trans :: s -> s }
 
-instance (Show s, Ord s, Alphabet a, States s) => Show (TransMonoid s a) where
+instance (Show s, Ord s, Alphabet a, StatesC s) => Show (TransMonoid s a) where
    show m = show' m allTs 0
       where
          t = transMonoid $ aut m
@@ -20,15 +20,15 @@ instance (Show s, Ord s, Alphabet a, States s) => Show (TransMonoid s a) where
             | m == x = show n
             | otherwise = show' m xs (n+1)
 
-instance (States s, Alphabet a) => Monoid (TransMonoid s a) where
-    mempty = TM { aut = simpleAut, dom = DS.toList allStates, trans = id }
+instance (Alphabet a, StatesC s) => Monoid (TransMonoid s a) where
+    mempty = TM { aut = simpleAut $ fromStates $ States allStatesC, dom = DS.toList allStatesC, trans = id }
     mappend l r
         | DS.null (acc (aut l)) = r
         | DS.null (acc (aut r)) = l
         | otherwise =
             TM { aut = aut l, dom = fmap (trans r) (dom l), trans = trans r . trans l }
 
-instance (States s, Eq s, Alphabet a) => Eq (TransMonoid s a) where
+instance (Eq s, Alphabet a) => Eq (TransMonoid s a) where
    l == r
       | DS.null (acc (aut l)) = DS.null (acc (aut r))
       | DS.null (acc (aut r)) = False
@@ -37,14 +37,14 @@ instance (States s, Eq s, Alphabet a) => Eq (TransMonoid s a) where
 data FullTransMonoid s a = FullTM { zero :: TransMonoid s a, elems :: DS.Set (TransMonoid s a) }
    deriving (Eq)
 
-instance (Show s, Ord s, Alphabet a, States s) => Show (FullTransMonoid s a) where
+instance (Show s, Ord s, Alphabet a, StatesC s) => Show (FullTransMonoid s a) where
    show = show . elems
 
-instance (States s, Ord s, Alphabet a) => Ord (TransMonoid s a) where
+instance (Ord s, Alphabet a) => Ord (TransMonoid s a) where
    l < r       = dom l < dom r
    compare l r = compare (dom l) (dom r)
 
-transMonoid :: (States s, Ord s, Alphabet a) => WordDFA s a -> FullTransMonoid s a
+transMonoid :: (Ord s, Alphabet a, StatesC s) => WordDFA s a -> FullTransMonoid s a
 transMonoid da = FullTM { zero = z, elems = e }
    where
       z = TM { aut = da, dom = DS.toList (states da), trans = id }
@@ -62,8 +62,8 @@ transMonoid da = FullTM { zero = z, elems = e }
 
 data Sts = SZ | SO | Tw | Thr | SF
     deriving (Show,Eq,Ord,Enum)
-instance States Sts where
-    allStates = DS.fromList [SZ .. SF]
+_States_Sts :: States Sts
+_States_Sts = States $ DS.fromList [SZ .. SF]
 
 data Alph = AZ | AO
     deriving (Show,Eq,Ord,Enum)
@@ -73,7 +73,7 @@ instance Alphabet Alph where
 tmz :: TransMonoid Sts Alph
 tmz = TM { aut = da, dom = img, trans = d AZ }
    where
-      da = WordDFA { delta = d, start = SZ, acc = DS.singleton SF, states = allStates }
+      da = WordDFA { delta = d, start = SZ, acc = DS.singleton SF, states = allStates _States_Sts }
       d AO SZ  = SO
       d AO SO  = Tw
       d AO Tw  = Thr
@@ -84,12 +84,12 @@ tmz = TM { aut = da, dom = img, trans = d AZ }
       d AZ Tw  = Tw
       d AZ Thr = Thr
       d AZ SF  = SZ
-      img = fmap (d AZ) (DS.toList allStates)
+      img = fmap (d AZ) (DS.toList $ allStates _States_Sts)
 
 tmo :: TransMonoid Sts Alph
 tmo = TM { aut = da, dom = img, trans = d AO }
    where
-      da = WordDFA { delta = d, start = SZ, acc = DS.singleton SF, states = allStates }
+      da = WordDFA { delta = d, start = SZ, acc = DS.singleton SF, states = allStates _States_Sts }
       d AO SZ  = SO
       d AO SO  = Tw
       d AO Tw  = Thr
@@ -100,5 +100,5 @@ tmo = TM { aut = da, dom = img, trans = d AO }
       d AZ Tw  = Tw
       d AZ Thr = Thr
       d AZ SF  = SZ
-      img = fmap (d AO) (DS.toList allStates)
+      img = fmap (d AO) (DS.toList $ allStates _States_Sts)
 

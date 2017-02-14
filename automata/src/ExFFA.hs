@@ -19,8 +19,8 @@ data Alph = A | B
 instance Alphabet Alph where
   allLetters = [A, B]
 
-instance States Z2 where
-  allStates = DS.fromList [Zero, One]
+_States_Z2 :: States Z2 
+_States_Z2 = States $ DS.fromList [Zero, One]
 
 fa :: ForestAlgebra Z2 Z2
 fa = FA {
@@ -39,8 +39,8 @@ two = Forest [Lf A, Lf A]
 e1 = Forest $ (:[]) $ Br A [Br B [Lf A, Lf B]]
 e2 = Forest $ (:[]) $ Br A [Br B [Lf A, Lf B], Lf B]
 
-da0 = toDTA m fa (DS.fromList [Zero])
-da1 = toDTA m fa (DS.fromList [One])
+da0 = toDTA _States_Z2 m fa (DS.fromList [Zero])
+da1 = toDTA _States_Z2 m fa (DS.fromList [One])
 
 main :: IO ()
 main = do

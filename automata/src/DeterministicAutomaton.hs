@@ -14,17 +14,17 @@ import qualified Data.Foldable as DF
 import Lib
 
 data DeterministicAutomaton s a where
-  DA :: (Alphabet a, States s, Monoid s) => {
+  DA :: (Alphabet a, Monoid s) => {
     delta :: DeltaProto a s,
     acc :: Set s,
-    states :: Set s
+    states :: States s
   } -> DeterministicAutomaton s a 
 
 data ExplicitDTA s a where
-  ExplicitDA :: (Alphabet a, States s) => {
+  ExplicitDA :: Alphabet a => {
     deltaH :: DeltaProto a s,
     explAcc :: Set s,
-    explStates :: Set s,
+    explStates :: States s,
     deltaV :: s -> s -> s,
     s0 :: s
   } -> ExplicitDTA s a
@@ -53,11 +53,11 @@ runExplicitDTA da@(ExplicitDA deltH _ _ deltV s0) (Br a rs) = deltH a lastState 
   lastState = P.foldl deltV s0 (P.map (runExplicitDTA da) rs)
 runExplicitDTA (ExplicitDA { deltaH = delt, s0 = s' }) (Lf a) = delt a s'
 
-instance (States s, Eq s, Monoid s) => Automaton (DeterministicAutomaton s) where
+instance (Eq s, Monoid s) => Automaton (DeterministicAutomaton s) where
   automatonAccepts da rt = runDeterministicAutomaton da rt `elem` acc da
   automatonAcceptsIO da rt = print $ if automatonAccepts da rt then "DTA accepted" else "DTA didn't accept"
 
-instance (States s, Eq s, Monoid s) => Automaton (ExplicitDTA s) where
+instance (Eq s, Monoid s) => Automaton (ExplicitDTA s) where
   automatonAccepts da rt = runExplicitDTA da rt `elem` explAcc da
   automatonAcceptsIO da rt = print $ if automatonAccepts da rt then "DTA accepted" else "DTA didn't accept"
 
@@ -77,8 +77,6 @@ data EQClass s = EQNeutral | EQClass {
 } deriving (Eq, Ord)
 
 
-instance (States s) => States (EQClass s) 
-
 
 instance (Ord s, Monoid s) => Monoid (EQClass s) where
   mempty = EQNeutral
@@ -96,22 +94,22 @@ minimize da@DA { delta = delta0, acc = acc0 } = DA {
   delta = delta', acc = acc', states = states' } where
   reachSts = reachable da
   reachDTA = da { states = reachSts }
-  eqClass' = eqClass $ EQRel (states reachDTA) (computeEquivSlow reachDTA)
+  eqClass' = eqClass $ EQRel (allStates $ states reachDTA) (computeEquivSlow reachDTA)
   acc' = map eqClass' acc0
-  states' = map eqClass' reachSts
+  states' = States $ map eqClass' $ allStates reachSts
   delta' a s = eqClass' $ delta0 a $ elemAt 0 $ elements s
 
-reachable :: (Ord a, Ord s) => DeterministicAutomaton s a -> (Set s)
+reachable :: (Ord a, Ord s) => DeterministicAutomaton s a -> States s
 reachable (DA delta acc _) = let
   s_init = singleton mempty in
-  reach s_init where
+  States $ reach s_init where
   reach ss = let nss = union ss $ next ss in
     if nss == ss then ss else reach nss
   next ss = union (map (uncurry delta) $ fromList $ pairs allLetters $ toList ss)
                   (map (uncurry mappend) $ fromList $ pairs (toList ss) (toList ss))
 
 computeEquivSlow :: (Ord a, Ord s) => DeterministicAutomaton s a -> Set (s, s)
-computeEquivSlow (DA delta acc sts) = 
+computeEquivSlow (DA delta acc (States sts)) = 
   result $ runSteps markInit where
   delta' = flip delta mempty
   firstIter = (map delta' $ fromList allLetters)
