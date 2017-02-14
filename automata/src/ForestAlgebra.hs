@@ -63,10 +63,10 @@ fromDTA (DA delta acc _) = (fa, morphFromFun fa delta) where
 -- δ a h = act h (β a), but β :: Context a -> v.
 -- So... construct a context out of a? and then believe that act produces a single tree?
 
-toDTA :: (Alphabet a, States h) => MorphFFA a h v -> ForestAlgebra h v -> DS.Set h -> DeterministicAutomaton h a
+toDTA :: (Alphabet a, States h, Enum h, Bounded h, Ord h) => MorphFFA a h v -> ForestAlgebra h v -> DS.Set h -> DeterministicAutomaton h a
 toDTA (MFA alpha beta) fa acc' = DA {
   delta = dt,
-  states = allStates,
+  states = DS.fromList [minBound .. maxBound],
   acc = acc'
 } where
   ffa = freeForestAlgebra

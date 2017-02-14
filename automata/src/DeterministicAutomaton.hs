@@ -1,4 +1,4 @@
-{-# LANGUAGE GADTs, MultiParamTypeClasses, InstanceSigs,  FlexibleInstances #-}
+{-# LANGUAGE GADTs #-}
 
 module DeterministicAutomaton where
 
@@ -7,7 +7,7 @@ import qualified Prelude as P
 import RoseTree
 import Alphabet
 import States
-import NonDeterministicAutomaton (NonDeterministicAutomaton(NA))
+import qualified NonDeterministicAutomaton as NA
 import Automaton
 import Data.Set
 import qualified Data.Foldable as DF
@@ -61,21 +61,24 @@ instance (States s, Eq s, Monoid s) => Automaton (ExplicitDTA s) where
   automatonAccepts da rt = runExplicitDTA da rt `elem` explAcc da
   automatonAcceptsIO da rt = print $ if automatonAccepts da rt then "DTA accepted" else "DTA didn't accept"
 
-determinize :: (Eq s, Ord s, States s) => NonDeterministicAutomaton s a -> DeterministicAutomaton (NonDetSimulation s) a
-determinize (NA { delta = delta, acc = acc, states = naStates }) = DA delta' acc' (map NonDetSimulation $ powerset naStates) where
-  acc' = map NonDetSimulation $ filter (\x -> any (`elem` x) acc) (powerset naStates)
-  delta' a s = NonDetSimulation $ foldMap (delta a) s
+determinize :: (Eq s, Ord s, States s) => NA.NonDeterministicAutomaton s a -> DeterministicAutomaton (NonDetSimulation s) a
+determinize (na@(NA.NA {})) = DA delta' acc' (map NonDetSimulation $ powerset $ NA.states na) where
+  acc' = map NonDetSimulation $ filter (\x -> any (`elem` x) $ NA.acc na) (powerset $ NA.states na)
+  delta' a s = NonDetSimulation $ foldMap (NA.delta na a) s
 
 data EQRel s = EQRel {
     allSubelements :: Set s
   , classRelation :: Set (s, s)
-} deriving (Eq, Ord)
+} deriving (Eq, Ord, Show)
 
 data EQClass s = EQNeutral | EQClass {
   elements :: Set s,
   relation :: EQRel s
-} deriving (Eq, Ord)
+} deriving (Eq, Ord, Show)
 
+repr :: (Monoid s) => EQClass s -> s
+repr EQNeutral = mempty
+repr (EQClass {elements = e}) = elemAt 0 e
 
 instance (States s) => States (EQClass s) 
 
@@ -84,10 +87,7 @@ instance (Ord s, Monoid s) => Monoid (EQClass s) where
   mempty = EQNeutral
   mappend EQNeutral x = x
   mappend x EQNeutral = x
-  mappend c1 c2 = let
-    e1 = elements c1
-    e2 = elements c2
-    rel = relation c1 in
+  mappend (EQClass {elements = e1, relation = rel}) (EQClass {elements = e2}) =
     eqClass rel $ mappend (elemAt 0 e1) (elemAt 0 e2)
 
 -- http://antoine.delignat-lavaud.fr/doc/report-M1.pdf
@@ -99,7 +99,8 @@ minimize da@DA { delta = delta0, acc = acc0 } = DA {
   eqClass' = eqClass $ EQRel (states reachDTA) (computeEquivSlow reachDTA)
   acc' = map eqClass' acc0
   states' = map eqClass' reachSts
-  delta' a s = eqClass' $ delta0 a $ elemAt 0 $ elements s
+  delta' a s = eqClass' $ delta0 a $ repr s
+
 
 reachable :: (Ord a, Ord s) => DeterministicAutomaton s a -> (Set s)
 reachable (DA delta acc _) = let

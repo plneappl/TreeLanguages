@@ -8,7 +8,7 @@ import Automaton
 import DeterministicAutomaton
 import qualified Data.Set as DS
 
-data Z2 = Zero | One deriving (Show, Ord, Eq)
+data Z2 = Zero | One deriving (Show, Ord, Eq, Enum, Bounded)
 instance Monoid Z2 where
   mempty = Zero
   mappend Zero a = a
@@ -19,8 +19,7 @@ data Alph = A | B
 instance Alphabet Alph where
   allLetters = [A, B]
 
-instance States Z2 where
-  allStates = DS.fromList [Zero, One]
+instance States Z2 
 
 fa :: ForestAlgebra Z2 Z2
 fa = FA {
