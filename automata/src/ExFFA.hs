@@ -8,7 +8,7 @@ import Automaton
 import DeterministicAutomaton
 import qualified Data.Set as DS
 
-data Z2 = Zero | One deriving (Show, Ord, Eq)
+data Z2 = Zero | One deriving (Show, Ord, Eq, Enum, Bounded)
 instance Monoid Z2 where
   mempty = Zero
   mappend Zero a = a

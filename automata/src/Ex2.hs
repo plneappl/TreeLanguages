@@ -25,6 +25,7 @@ ex2_3 = Br F [Lf A, Lf A, Lf A, Lf A, Lf B, Lf B, Lf B, Lf B]
 
 data Sts = N | Y | SA | SB | SY | Ntr
     deriving (Show,Eq,Ord,Enum)
+
 _States_Sts :: States Sts
 _States_Sts = States $ DS.fromList [N .. Ntr]
 

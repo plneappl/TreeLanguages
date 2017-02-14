@@ -17,10 +17,11 @@ instance Alphabet Alph where
   allLetters = [A, B, F]
 
 
-data Sts = Y | N | E deriving (Show, Eq, Ord)
+data Sts = Y | N | E deriving (Show, Eq, Ord, Enum, Bounded)
 
 _States_Sts :: States Sts
 _States_Sts = States $ fromList [Y, N, E]
+
 instance HasEmptyState Sts where
   emptyState = E
 instance Monoid Sts where
@@ -57,6 +58,7 @@ na = NA.NA d1 (singleton Y) _States_Sts
 
 da :: DA.DeterministicAutomaton Sts Alph
 da = DA.DA d2 (singleton Y) _States_Sts
+
 
 ex1_1, ex1_2 :: RT Alph
 ex1_1 = Br F [Br F [Lf A, Lf A], Br F [Lf B, Lf B]]
