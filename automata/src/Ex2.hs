@@ -8,6 +8,7 @@ import Automaton
 import qualified Data.Set as DS
 import Pretty
 import ForestAlgebra
+import GHC.IO.Encoding
 
 data Alph = A | B | F | Eps deriving (Show, Eq, Ord)
 instance Alphabet Alph where
@@ -65,6 +66,7 @@ da_min = minimize da
 
 main :: IO()
 main = do
+  setLocaleEncoding utf8
   print "Tree 1:"
   printRT ex2_1
   automatonAcceptsIO da ex2_1
@@ -80,7 +82,7 @@ main = do
   automatonAcceptsIO da_back ex2_3
 
   print $ reachable da
-  --  print da_min
+  print da_min
   automatonAcceptsIO da_min ex2_1
   automatonAcceptsIO da_min ex2_2
   automatonAcceptsIO da_min ex2_3

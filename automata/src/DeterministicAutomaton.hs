@@ -75,7 +75,11 @@ data EQRel s = EQRel {
 data EQClass s = EQNeutral | EQClass {
   elements :: Set s,
   relation :: EQRel s
-} deriving (Eq, Ord, Show)
+} deriving (Eq, Ord)
+
+instance (Show s, Monoid s) => Show (EQClass s) where
+  show EQNeutral = "⟦ϵ⟧"
+  show e = "⟦" ++ show (repr e) ++ "⟧"
 
 repr :: (Monoid s) => EQClass s -> s
 repr EQNeutral = mempty
