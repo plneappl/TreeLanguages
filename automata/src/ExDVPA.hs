@@ -17,8 +17,9 @@ instance StackAlph Alph where
 data Sts = Good | Fail deriving (Eq, Ord, Show)
 sts = States $ fromList [Good, Fail]
 
-vpa1 :: VPA Sts Alph Alph
-vpa1 = DVPA {
+-- accepts ⅅ₁
+vpa :: VPA Sts Alph Alph
+vpa = DVPA {
   states = sts,
   startState = Good,
   acc = singleton Good,
@@ -37,8 +38,10 @@ deltaR :: Alph -> Sts -> Alph -> Sts
 deltaR _ Good '(' = Good
 deltaR _ _ _ = Fail
 
+
+
 main :: IO ()
 main = do
-  print $ runVPA vpa1 "()()()"
-  print $ runVPA vpa1 "(())"
-  print $ runVPA vpa1 "()()())"
+  print $ runVPA vpa "()()()"
+  print $ runVPA vpa "(())"
+  print $ runVPA vpa "()()())"
