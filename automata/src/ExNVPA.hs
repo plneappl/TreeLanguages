@@ -17,14 +17,14 @@ instance StackAlph Alph where
 data Sts = First | Second | Fail deriving (Eq, Show, Ord)
 
 -- accepts   (ⅅ₁∖{ϵ}) . ⅅ₂  
-vpa :: VPA Sts Alph Alph
+vpa :: NVPA Sts Alph Alph
 vpa = NVPA {
-  states       = States $ fromList [First, Second, Fail],
-  startStates  = singleton First,
-  acc          = singleton Second,
-  call         = fromList "([",
-  ret          = fromList ")]",
-  intern       = undefined,
+  statesN      = States $ fromList [First, Second, Fail],
+  startStatesN = singleton First,
+  accN         = singleton Second,
+  callN        = fromList "([",
+  retN         = fromList ")]",
+  internN      = undefined,
   deltaCallN   = deltaC,
   deltaRetN    = deltaR,
   deltaInternN = undefined
@@ -45,8 +45,8 @@ deltaR _ _ _ = singleton Fail
 
 main :: IO ()
 main = do
-  print $ runVPA vpa "()()"
-  print $ runVPA vpa "(())([])"
-  print $ runVPA vpa "([])()())"
-  print $ runVPA vpa "()()()"
-  print $ runVPA vpa "()"
+  print $ runNVPA vpa "()()"
+  print $ runNVPA vpa "(())([])"
+  print $ runNVPA vpa "([])()())"
+  print $ runNVPA vpa "()()()"
+  print $ runNVPA vpa "()"

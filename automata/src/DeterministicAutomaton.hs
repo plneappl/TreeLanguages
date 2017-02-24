@@ -2,7 +2,7 @@
 
 module DeterministicAutomaton where
 
-import Prelude hiding (map, filter)
+import Prelude hiding (map, filter, null)
 import qualified Prelude as P
 import RoseTree
 import Alphabet
@@ -12,6 +12,10 @@ import Automaton
 import Data.Set
 import qualified Data.Foldable as DF
 import Lib
+import EQClass
+import VisiblyPushdownAutomaton
+import FiniteFunctions
+import Control.Exception (assert)
 
 data DeterministicAutomaton s a where
   DA :: (Alphabet a, Monoid s) => {
@@ -67,31 +71,7 @@ determinize (na@(NA.NA {})) = DA delta' acc' (statesNonDetSimulation $ NA.states
   delta' a s = NonDetSimulation $ foldMap (NA.delta na a) s
 
 
-data EQRel s = EQRel {
-    allSubelements :: Set s
-  , classRelation :: Set (s, s)
-} deriving (Eq, Ord, Show)
 
-data EQClass s = EQNeutral | EQClass {
-  elements :: Set s,
-  relation :: EQRel s
-} deriving (Eq, Ord)
-
-instance (Show s, Monoid s) => Show (EQClass s) where
-  show EQNeutral = "⟦ϵ⟧"
-  show e = "⟦" ++ show (repr e) ++ "⟧"
-
-repr :: (Monoid s) => EQClass s -> s
-repr EQNeutral = mempty
-repr (EQClass {elements = e}) = elemAt 0 e
-
-
-instance (Ord s, Monoid s) => Monoid (EQClass s) where
-  mempty = EQNeutral
-  mappend EQNeutral x = x
-  mappend x EQNeutral = x
-  mappend (EQClass {elements = e1, relation = rel}) (EQClass {elements = e2}) =
-    eqClass rel $ mappend (elemAt 0 e1) (elemAt 0 e2)
 
 -- http://antoine.delignat-lavaud.fr/doc/report-M1.pdf
 minimize :: (Ord a, Ord s) => DeterministicAutomaton s a -> DeterministicAutomaton (EQClass s) a
@@ -114,10 +94,18 @@ reachable (DA delta acc _) = let
   next ss = union (map (uncurry delta) $ fromList $ pairs allLetters $ toList ss)
                   (map (uncurry mappend) $ fromList $ pairs (toList ss) (toList ss))
 
+
+--newtype EQMember s a = EQMember {unEQMember :: (s, RT a) } deriving Show
+--instance (Eq s) => Eq (EQMember s a) where
+--  (EQMember (s1, _)) == (EQMember (s2, _)) = s1 == s2
+--instance (Ord s) => Ord (EQMember s a) where
+--  compare (EQMember (s1, _)) (EQMember (s2, _)) = compare s1 s2
+
+
 computeEquivSlow :: (Ord a, Ord s) => DeterministicAutomaton s a -> Set (s, s)
 computeEquivSlow (DA delta acc (States sts)) = 
   result $ runSteps markInit where
-  delta' = flip delta mempty
+  delta'  = flip delta mempty
   firstIter = (map delta' $ fromList allLetters)
   allStatesPairs = fromList $ pairs (toList sts) (toList sts)
   inv sts = allStatesPairs \\ sts
@@ -140,15 +128,42 @@ computeEquivSlow (DA delta acc (States sts)) =
 
   result (ms, mq) = union (inv ms) (inv mq)
 
-eqClass :: (Ord s) => EQRel s -> s -> EQClass s
-eqClass r@(EQRel ss eqr) s = EQClass {
-    elements = filter (\s' -> s ~~ s' $ eqr) ss
-  , relation = r }
 
-(~~) :: (Ord s) => s -> s -> Set (s, s) -> Bool
-(~~) s s' eqr = (s, s') `member` eqr || (s', s) `member` eqr
+fromDVPA :: (Show a) => DVPA s g a -> (DeterministicAutomaton (EndoFunL s) (a, a), [a] -> [RT (a, a)])
+fromDVPA vpa@DVPA {} = (DA {
+    delta   = delta',   
+    acc     = acc', 
+    states  = states'  
+  }, transform) where
+  accPairs = map (\e -> (startStateD vpa, e)) $ accD vpa
+  vpaStates = allStates $ statesD vpa
+  allFuns = allFunctions vpaStates vpaStates
+  acc' = filter (\f -> not $ null $ accPairs `intersection` fromList (unFunL f)) $ allFuns
+  -- a -> s -> s
+  -- first case: c and r are really call and return
+  delta' (c, r) f | c `member` callD vpa = let 
+    f1 = [ (s0, s1, g) | s0 <- toList vpaStates, let (s1, g) = deltaCallD vpa c s0 ] 
+    f2 = P.map (\(s0, s1, g) -> (s0, appl f s1, g)) f1
+    f3 = P.map (\(s0, s2, g) -> (s0, deltaRetD vpa r s2 g)) f2 in 
+    FunL f3
+  -- second case: (c, r) is a leaf, actually (a, a) with a ∈ Σ_internal
+                  | otherwise = FunL [(s0, deltaInternD vpa c s0) | s0 <- toList vpaStates]
+  states' = States $ allFuns
 
+  transform [] = []
+  transform (a:as) | a `member` internD vpa = Lf (a, a) : transform as
+                   | a `member` callD   vpa = let
+                      asRev = reverse as
+                      (subWord, a', rest) = findClosing as in
+                      Br (a, a') (transform subWord) : transform rest
+                   | a `member` retD    vpa = error $ "word isn't well matched: " ++ (show (a:as))
 
-
---main :: IO ()
---main = print ""
+  findClosing (a:as) | a `member` retD    vpa = ([], a, as)
+                     | a `member` internD vpa = let
+                       (sub', a', rest) = findClosing as in
+                       (a:sub', a', rest)
+                     | a `member` callD   vpa = let
+                      (sub', a', rest') = findClosing as
+                      (sub'', a'', rest'') = findClosing rest' in
+                      assert ((a : sub' ++ [a'] ++ sub'' ++ [a''] ++ rest'') == a:as)
+                      (a : sub' ++ [a'] ++ sub'', a'', rest'')
