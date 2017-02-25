@@ -1,4 +1,4 @@
-{-# LANGUAGE GADTs #-}
+{-# LANGUAGE GADTs, FlexibleInstances #-}
 
 module DeterministicAutomaton where
 
@@ -24,26 +24,12 @@ data DeterministicAutomaton s a where
     states :: States s
   } -> DeterministicAutomaton s a 
 
-data ExplicitDTA s a where
-  ExplicitDA :: Alphabet a => {
-    deltaH :: DeltaProto a s,
-    explAcc :: Set s,
-    explStates :: States s,
-    deltaV :: s -> s -> s,
-    s0 :: s
-  } -> ExplicitDTA s a
 
 instance (Show s, Show a) => Show (DeterministicAutomaton s a) where
   show (DA _ acc states) = "DA {\n\t" ++
     "fun: <binary>\n" ++ 
     "\tacc: " ++ (show acc) ++ "\n" ++
     "\tsts: " ++ (show states) ++ "\n}" 
-instance (Show s, Show a) => Show (ExplicitDTA s a) where
-  show (ExplicitDA {explAcc = acc', s0 = s0', explStates = sts}) = "ExplicitDA {\n\t" ++
-    "fun: <binary>\n" ++ 
-    "\tacc: " ++ (show acc') ++ "\n" ++
-    "\ts0:  " ++ (show s0') ++ "\n" ++
-    "\tsts: " ++ (show sts) ++ "\n}" 
 
 
 type DeltaProto a s = a -> s -> s
@@ -52,17 +38,9 @@ runDeterministicAutomaton :: DeterministicAutomaton s a -> RT a -> s
 runDeterministicAutomaton da@(DA delt _ _) (Br a rs) = delt a (DF.foldMap (runDeterministicAutomaton da) rs)
 runDeterministicAutomaton (DA delt _ _) (Lf a) = delt a mempty
 
-runExplicitDTA :: ExplicitDTA s a -> RT a -> s
-runExplicitDTA da@(ExplicitDA deltH _ _ deltV s0) (Br a rs) = deltH a lastState where
-  lastState = P.foldl deltV s0 (P.map (runExplicitDTA da) rs)
-runExplicitDTA (ExplicitDA { deltaH = delt, s0 = s' }) (Lf a) = delt a s'
 
 instance (Eq s, Monoid s) => Automaton (DeterministicAutomaton s) where
   automatonAccepts da rt = runDeterministicAutomaton da rt `elem` acc da
-  automatonAcceptsIO da rt = print $ if automatonAccepts da rt then "DTA accepted" else "DTA didn't accept"
-
-instance (Eq s, Monoid s) => Automaton (ExplicitDTA s) where
-  automatonAccepts da rt = runExplicitDTA da rt `elem` explAcc da
   automatonAcceptsIO da rt = print $ if automatonAccepts da rt then "DTA accepted" else "DTA didn't accept"
 
 determinize :: (Eq s, Ord s) => NA.NonDeterministicAutomaton s a -> DeterministicAutomaton (NonDetSimulation s) a
@@ -71,16 +49,14 @@ determinize (na@(NA.NA {})) = DA delta' acc' (statesNonDetSimulation $ NA.states
   delta' a s = NonDetSimulation $ foldMap (NA.delta na a) s
 
 
-
-
 -- http://antoine.delignat-lavaud.fr/doc/report-M1.pdf
 minimize :: (Ord a, Ord s) => DeterministicAutomaton s a -> DeterministicAutomaton (EQClass s) a
 minimize da@DA { delta = delta0, acc = acc0 } = DA { 
   delta = delta', acc = acc', states = states' } where
   reachSts = reachable da
-  reachDTA = da { states = reachSts }
+  reachDTA = da { states = reachSts, acc = acc0 `intersection` allStates reachSts }
   eqClass' = eqClass $ EQRel (allStates $ states reachDTA) (computeEquivSlow reachDTA)
-  acc' = map eqClass' acc0
+  acc' = map eqClass' $ acc reachDTA
   states' = States $ map eqClass' $ allStates reachSts
   delta' a s = eqClass' $ delta0 a $ repr s
 
@@ -105,7 +81,7 @@ reachable (DA delta acc _) = let
 computeEquivSlow :: (Ord a, Ord s) => DeterministicAutomaton s a -> Set (s, s)
 computeEquivSlow (DA delta acc (States sts)) = 
   result $ runSteps markInit where
-  delta'  = flip delta mempty
+  delta' = flip delta mempty
   firstIter = (map delta' $ fromList allLetters)
   allStatesPairs = fromList $ pairs (toList sts) (toList sts)
   inv sts = allStatesPairs \\ sts

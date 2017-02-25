@@ -66,3 +66,4 @@ main = do
   print $ all (automatonAccepts dta) (trans "()()[)")
   print $ all (automatonAccepts dta) (trans "[(ab)([a])]")
   print $ all (automatonAccepts dta) (trans "[(aa)([a])]")
+  print $ all (automatonAccepts dta) (trans "[(aa)([a]]]")

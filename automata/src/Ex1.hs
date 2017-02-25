@@ -8,9 +8,11 @@ import States
 import qualified DeterministicAutomaton as DA
 import qualified NonDeterministicAutomaton as NA
 import Automaton
-import Data.Set
+import Data.Set hiding (take)
 import qualified Data.List as DL
 import ForestAlgebra
+import GHC.IO.Encoding
+import EQClass
 
 data Alph = A | B | F deriving (Show, Eq, Ord)
 instance Alphabet Alph where
@@ -77,12 +79,13 @@ da_m = snd da_fa_m
 da_toAndFrom :: DA.DeterministicAutomaton Sts Alph
 da_toAndFrom = toDTA (DA.states da) da_m da_fa (singleton Y)
 
---  da_det = DA.determinize na
---  da_min1 = DA.minimize da
---  da_min2 = DA.minimize da_det
+da_det = DA.determinize na
+da_min1 = DA.minimize da
+da_min2 = DA.minimize da_det
 
 main :: IO()
 main = do
+  setLocaleEncoding utf8
   print "Tree 1:"
   printRT ex1_1
   print "NTA looking for an A:"
@@ -115,13 +118,13 @@ main = do
   automatonAcceptsIO da_toAndFrom ex1_2
   print ""
   print da
-  --  print $ da_min1
-  --  automatonAcceptsIO da_min1 ex1_1
-  --  automatonAcceptsIO da_min1 ex1_2
-  --  print ""
-  --  print da_det
-  --  print $ da_min2
-  --  automatonAcceptsIO da_min2 ex1_1
-  --  automatonAcceptsIO da_min2 ex1_2
+  print $ da_min1
+  automatonAcceptsIO da_min1 ex1_1
+  automatonAcceptsIO da_min1 ex1_2
+  print da_det
+  print $ da_min2
+  automatonAcceptsIO da_min2 ex1_1
+  automatonAcceptsIO da_min2 ex1_2
+
   
 

@@ -2,6 +2,7 @@ module EQClass where
 
 import Prelude hiding (map, filter)
 import Data.Set
+import Control.Exception (assert)
 
 data EQRel s = EQRel {
     allSubelements :: Set s
@@ -15,14 +16,15 @@ data EQClass s = EQNeutral | EQClass {
 
 instance (Show s) => Show (EQClass s) where
   show EQNeutral = "⟦ϵ⟧"
-  show EQClass {elements = e} = "⟦" ++ show (elemAt 0 e) ++ "⟧"
+  show EQClass {elements = e} = assert (size e > 0) $ "⟦" ++ show (elemAt 0 e) ++ "⟧"
 
 repr :: (Monoid s) => EQClass s -> s
 repr = repr' mempty
 
 repr' :: s -> EQClass s -> s
 repr' s EQNeutral = s
-repr' _ EQClass {elements = e} = elemAt 0 e
+repr' _ EQClass {elements = e} = assert (size e > 0) $ elemAt 0 e
+
 
 eqClass :: (Ord s) => EQRel s -> s -> EQClass s
 eqClass r@(EQRel ss eqr) s = EQClass {
