@@ -8,8 +8,11 @@ import RoseTree
 rtToTree :: RT a -> DT.Tree a
 rtToTree = foldRT (flip DT.Node []) DT.Node
 
+showTree :: (Show a) => DT.Tree a -> String
+showTree t = drawVerticalTree (fmap show t)
+
 printTree :: (Show a) => DT.Tree a -> IO ()
-printTree t = putStr $ drawVerticalTree (fmap show t)
+printTree = putStr . showTree
 
 printDTForest :: (Show a) => DT.Forest a -> IO ()
 printDTForest ts = putStr $ drawVerticalForest $ fmap (fmap show) ts
@@ -17,8 +20,11 @@ printDTForest ts = putStr $ drawVerticalForest $ fmap (fmap show) ts
 printForest :: (Show a) => Forest a -> IO ()
 printForest = printDTForest . fmap rtToTree . trees
 
+showRT :: (Show a) => RT a -> String
+showRT = showTree . rtToTree
+
 printRT :: (Show a) => RT a -> IO ()
-printRT = printTree . rtToTree
+printRT = putStr . showRT
 
 printContext :: (Show a) => Context a -> IO ()
 printContext c = printForest $ insertForest (fmap (PrintInContext . Just) c) (Forest [Lf $ PrintInContext Nothing])

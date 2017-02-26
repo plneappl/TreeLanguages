@@ -50,32 +50,27 @@ determinize (na@(NA.NA {})) = DA delta' acc' (statesNonDetSimulation $ NA.states
 
 
 -- http://antoine.delignat-lavaud.fr/doc/report-M1.pdf
-minimize :: (Ord a, Ord s) => DeterministicAutomaton s a -> DeterministicAutomaton (EQClass s) a
+minimize :: (Ord a, Ord s) => DeterministicAutomaton s a -> DeterministicAutomaton (EQClass a s) a
 minimize da@DA { delta = delta0, acc = acc0 } = DA { 
   delta = delta', acc = acc', states = states' } where
-  reachSts = reachable da
+  reachWitnesses = reachable da
+  reachSts = States $ map fromWitness reachWitnesses 
   reachDTA = da { states = reachSts, acc = acc0 `intersection` allStates reachSts }
-  eqClass' = eqClass $ EQRel (allStates $ states reachDTA) (computeEquivSlow reachDTA)
+  eqClass' = eqClass $ EQRel (reachWitnesses) (computeEquivSlow reachDTA)
   acc' = map eqClass' $ acc reachDTA
   states' = States $ map eqClass' $ allStates reachSts
   delta' a s = eqClass' $ delta0 a $ repr s
 
 
-reachable :: (Ord a, Ord s) => DeterministicAutomaton s a -> States s
+reachable :: (Ord a, Ord s) => DeterministicAutomaton s a -> Set (Witness a s)
 reachable (DA delta acc _) = let
-  s_init = singleton mempty in
-  States $ reach s_init where
+  s_init = singleton $ Witness (mempty, []) in
+  reach s_init where
   reach ss = let nss = union ss $ next ss in
     if nss == ss then ss else reach nss
-  next ss = union (map (uncurry delta) $ fromList $ pairs allLetters $ toList ss)
-                  (map (uncurry mappend) $ fromList $ pairs (toList ss) (toList ss))
+  next ss = union (map (\(a, Witness (s, t)) -> Witness (delta a s, [Br a t])) $ fromList $ pairs allLetters $ toList ss)
+                  (map (\(Witness (s1, t1), Witness (s2, t2)) -> Witness (mappend s1 s2, t1 ++ t2)) $ fromList $ pairs (toList ss) (toList ss))
 
-
---newtype EQMember s a = EQMember {unEQMember :: (s, RT a) } deriving Show
---instance (Eq s) => Eq (EQMember s a) where
---  (EQMember (s1, _)) == (EQMember (s2, _)) = s1 == s2
---instance (Ord s) => Ord (EQMember s a) where
---  compare (EQMember (s1, _)) (EQMember (s2, _)) = compare s1 s2
 
 
 computeEquivSlow :: (Ord a, Ord s) => DeterministicAutomaton s a -> Set (s, s)
