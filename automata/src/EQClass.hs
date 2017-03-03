@@ -6,6 +6,9 @@ import Data.Set
 import Control.Exception (assert)
 import RoseTree
 import Pretty
+import Lib
+import Control.Monad (join)
+import Data.Maybe (catMaybes, listToMaybe)
 
 data EQRel a s = EQRel {
     allSubelements :: Set (Witness a s)
@@ -32,14 +35,35 @@ data EQClass a s = EQNeutral | EQClass {
   relation :: EQRel a s
 } deriving (Eq, Ord)
 
+(→) :: Bool -> Bool -> Bool
+b1 → b2 = (not b1) || b2
 
-instance (Show a) => Show (EQClass a s) where
-  show EQNeutral = "⟦ϵ⟧"
-  show EQClass {elements = e} = assert (size e > 0) $ "⟦" ++ P.foldr ((++) . init . showRT) "" (actualWitness $ elemAt 0 e) ++ "⟧"
 
---instance (Show s) => Show (EQClass a s) where
+assertTransitive :: (Eq s) => Set s -> EQRel a s -> [((s, s), (s, s))]
+assertTransitive ss EQRel { classRelation = rel } = let
+  ss' = toList ss
+  ssPairs = pairs ss' ss'
+  ssPairs' = pairs ssPairs ssPairs in
+  catMaybes $ P.map (\(p1@(s1, s2), p2@(s3, s4)) -> if ((s2 == s3) && (p1 `elem` rel) && (p2 `elem` rel)) → ((fst p1, snd p2) `elem` rel) then Nothing else Just (p1, p2)) ssPairs'
+
+assertReflexive :: (Eq s) => Set s -> EQRel a s -> [(s, s)]
+assertReflexive ss EQRel { classRelation = rel } = let
+  ss' = toList ss in
+  catMaybes $ P.map (\s -> if (s, s) `elem` rel then Nothing else Just (s, s)) ss'
+
+assertSymetric :: (Eq s) => Set s -> EQRel a s -> [(s, s)]
+assertSymetric ss EQRel { classRelation = rel } = let
+  ss' = toList ss
+  ssPairs = pairs ss' ss' in
+  catMaybes $ P.map (\p@(s1, s2) -> if (p `elem` rel) → ((s2, s1) `elem` rel) then Nothing else Just (s1, s2)) ssPairs
+
+--instance (Show a) => Show (EQClass a s) where
 --  show EQNeutral = "⟦ϵ⟧"
---  show EQClass {elements = e} = assert (size e > 0) $ "⟦" ++ show (fromWitness $ elemAt 0 e) ++ "⟧"
+--  show EQClass {elements = e} = assert (size e > 0) $ "⟦" ++ P.foldr ((++) . init . showRT) "" (actualWitness $ elemAt 0 e) ++ "⟧"
+
+instance (Show s) => Show (EQClass a s) where
+  show EQNeutral = "⟦ϵ⟧"
+  show EQClass {elements = e, relation = r} = assert (size e > 0) $ "⟦" ++ show (fromWitness $ elemAt 0 e) ++ "⟧"
 
 
 repr :: (Monoid s) => EQClass a s -> s
@@ -56,11 +80,13 @@ eqClass r@(EQRel ss eqr) s = EQClass {
   , relation = r }
 
 (~~) :: (Ord s) => s -> s -> EQRel a s -> Bool
-(~~) s s' eqr = (s, s') `member` classRelation eqr || (s', s) `member` classRelation eqr
+(~~) s s' eqr = (s, s') `member` classRelation eqr 
+-- EQClasses are reflexive, therefore we need not test this
+-- || (s', s) `member` classRelation eqr
 
 instance (Ord s, Monoid s) => Monoid (EQClass a s) where
   mempty = EQNeutral
   mappend EQNeutral x = x
   mappend x EQNeutral = x
-  mappend EQClass {elements = e1, relation = rel} EQClass{elements = e2, relation = rel'} =
+  mappend EQClass {elements = e1, relation = rel} EQClass {elements = e2, relation = rel'} =
     assert (rel == rel') $ eqClass rel $ mappend (fromWitness $ elemAt 0 e1) (fromWitness $ elemAt 0 e2)
