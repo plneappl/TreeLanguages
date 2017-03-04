@@ -93,9 +93,9 @@ computeEquivSlow (DA delta acc (States sts)) =
   alphaStep  msq@(ms, mq) = (alphaStep'  msq, mq)
   stateStep1 msq@(ms, mq) = (stateStep1' msq, mq)
   stateStep2 msq@(ms, mq) = (ms, stateStep2' msq)
-  reflexivize' ss = ss `union` (map (\(s1, s2) -> (s2, s1)) ss)
-  reflexivize (ms, mq) = (reflexivize' ms, reflexivize' mq)
-  step = reflexivize . stateStep2 . stateStep1 . alphaStep
+  symetrizise' ss = ss `union` (map (\(s1, s2) -> (s2, s1)) ss)
+  symetrizise (ms, mq) = (symetrizise' ms, symetrizise' mq)
+  step = symetrizise . stateStep2 . stateStep1 . alphaStep
   runSteps msts = let nsts = step msts in
     if nsts == msts then nsts else runSteps nsts
 
