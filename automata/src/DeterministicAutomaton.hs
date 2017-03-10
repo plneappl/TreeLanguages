@@ -15,6 +15,7 @@ import Lib
 import EQClass
 import VisiblyPushdownAutomaton
 import FiniteFunctions
+import Control.Monad (guard)
 import Control.Exception (assert)
 
 data DeterministicAutomaton s a where
@@ -140,3 +141,36 @@ fromDVPA vpa@DVPA {} = (DA {
                       (sub'', a'', rest'') = findClosing rest' in
                       assert ((a : sub' ++ [a'] ++ sub'' ++ [a''] ++ rest'') == a:as)
                       (a : sub' ++ [a'] ++ sub'', a'', rest'')
+
+data PushdownAlphabet a = Call a | Intern a | Return a deriving (Eq, Ord)
+instance Show a => Show (PushdownAlphabet a) where
+  show (Call a) = show a
+  show (Intern a) = show a ++ show a ++ "'"
+  show (Return a) = show a ++ "'"
+instance Alphabet a => Alphabet (PushdownAlphabet a) where
+  allLetters = P.map Call allLetters ++ P.map Intern allLetters ++ P.map Return allLetters
+
+-- need failure state, bottom letter --> States ~ Maybe s, StackAlph ~ Maybe a 
+toDVPA :: (Ord a, Ord s) => DeterministicAutomaton s a -> (DVPA (Maybe s) (Maybe a) (PushdownAlphabet a), RT a -> [(PushdownAlphabet a)])
+toDVPA da@DA {} = (DVPA {
+    statesD      = States $ map Just $ allStates $ states da,
+    startStateD  = Just mempty,
+    accD         = map Just $ acc da,
+    callD        = map Call   $ fromList allLetters,
+    retD         = map Return $ fromList allLetters,
+    internD      = map Intern $ fromList allLetters,
+    deltaCallD   = \ (Call a) s -> (s, Just a),
+    deltaRetD    = \ (Return a) s sa -> do
+      s' <- s
+      a' <- sa
+      guard $ a == a'
+      return $ delta da a s',
+    deltaInternD = \ (Intern a) s -> do
+      s' <- s
+      return $ s' `mappend` (delta da a mempty) 
+
+  }, transform) where
+  transform (Lf a)    = [Intern a]
+  transform (Br l ts) = Call l : (concatMap transform ts) ++ [Return l]
+
+

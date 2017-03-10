@@ -11,6 +11,9 @@ import Data.Set
 class Alphabet a => StackAlph a where
   emptyStack :: a
 
+instance Alphabet s => StackAlph (Maybe s) where
+  emptyStack = Nothing
+
 data DVPA s g a where
   DVPA :: (Ord a, Ord s, Alphabet a, StackAlph g) => {
     statesD      :: States s,

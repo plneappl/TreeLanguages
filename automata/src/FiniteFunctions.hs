@@ -49,7 +49,7 @@ allFunctions as bs | null as || null bs = empty
                    | size as == 1 = fromList [FunL [(a, b)] | let a = elemAt 0 as, b <- toList bs]
                    | otherwise = let
                       a = elemAt 0 as
-                      as' = deleteAt 1 as in
+                      as' = drop 1 as in
                       map FunL $ fromList [fa : fr | fa <- [(a, b) | b <- toList bs], fr <- toList $ map unFunL $ allFunctions as' bs]
 
 
