@@ -121,9 +121,10 @@ fromDVPA vpa@DVPA {} = (DA {
     f3 = P.map (\(s0, s2, g) -> (s0, deltaRetD vpa r s2 g)) f2 in 
     FunL f3
   -- second case: (c, r) is a leaf, actually (a, a) with a ∈ Σ_internal
-                  | otherwise = FunL [(s0, deltaInternD vpa c s0) | s0 <- toList vpaStates]
+                  | otherwise = assert (c == r) $ FunL [(s0, deltaInternD vpa c s0) | s0 <- toList vpaStates]
   states' = States $ allFuns
 
+  -- transform a word into a forest
   transform [] = []
   transform (a:as) | a `member` internD vpa = Lf (a, a) : transform as
                    | a `member` callD   vpa = let
@@ -131,16 +132,25 @@ fromDVPA vpa@DVPA {} = (DA {
                       (subWord, a', rest) = findClosing as in
                       Br (a, a') (transform subWord) : transform rest
                    | a `member` retD    vpa = error $ "word isn't well matched: " ++ (show (a:as))
-
+  -- find the next closing letter. divide word into before and after, example:
+  -- [][[]]]][] -> [][[]], ], ][]
+  -- case 1: a is a closing letter, so we are done.
   findClosing (a:as) | a `member` retD    vpa = ([], a, as)
+  -- case 2: a is internal. append it to the first part, return recursive.
                      | a `member` internD vpa = let
                        (sub', a', rest) = findClosing as in
                        (a:sub', a', rest)
+  -- case 3: a is an opening letter. first close it, then search in the part after the first closing for our real result. finally append everything.
+  -- example: 
+  -- a  as    (sub' a'  rest')  (a   sub'  a', a'', rest'') (sum  a''  rest'')
+  -- [  ]][] -> ϵ,   ],  ][]  -> [ +  ϵ  + ],  ],   []     = [],   ],   []
                      | a `member` callD   vpa = let
                       (sub', a', rest') = findClosing as
-                      (sub'', a'', rest'') = findClosing rest' in
-                      assert ((a : sub' ++ [a'] ++ sub'' ++ [a''] ++ rest'') == a:as)
-                      (a : sub' ++ [a'] ++ sub'', a'', rest'')
+                      (sub'', a'', rest'') = findClosing rest' 
+                      prefix = a : sub' ++ [a'] ++ sub'' in
+                      -- check we didn't change the order and didn't lose anything
+                      assert ((prefix ++ [a''] ++ rest'') == a:as)
+                      (prefix, a'', rest'')
 
 data PushdownAlphabet a = Call a | Intern a | Return a deriving (Eq, Ord)
 instance Show a => Show (PushdownAlphabet a) where
@@ -175,6 +185,7 @@ toDVPA da@DA {} = (DVPA {
       (a', s'') <- sa
       guard $ a == a'
       return $ s'' `mappend` delta da a s',
+    -- Intern letters are leaves, therefore just do as the DTA would do
     deltaInternD = \ (Intern a) s -> do
       s' <- s
       return $ s' `mappend` (delta da a mempty) 
