@@ -10,7 +10,8 @@ import Prelude hiding (map, filter, Word)
 import DeterministicAutomaton
 import Control.Applicative ((<$>))
 import RoseTree
-import Automaton
+import qualified Automaton as A
+import qualified WordAutomaton as W
 
 type Alph = Char
 instance Alphabet Alph where
@@ -66,21 +67,21 @@ main = do
   print   dta
   print (trans "[(ab)([a])]")
   print (trans "()()[)") 
-  print $ all (automatonAccepts dta) (trans "()()[]")
-  print $ all (automatonAccepts dta) (trans "()()[)")
-  print $ all (automatonAccepts dta) (trans "[(ab)([a])]")
-  print $ all (automatonAccepts dta) (trans "[(aa)([a])]")
-  print $ all (automatonAccepts dta) (trans "[(aa)([a]]]")
+  print $ all (A.automatonAccepts dta) (trans "()()[]")
+  print $ all (A.automatonAccepts dta) (trans "()()[)")
+  print $ all (A.automatonAccepts dta) (trans "[(ab)([a])]")
+  print $ all (A.automatonAccepts dta) (trans "[(aa)([a])]")
+  print $ all (A.automatonAccepts dta) (trans "[(aa)([a]]]")
   print "--------"
   print (accD vpa')
   print (id' "()()()")
-  print $ P.map (runDVPA vpa') (id' "()()()")
+  print $ P.map (W.automatonAccepts vpa') (id' "()()()")
   print (id' "(())")  
-  print $ P.map (runDVPA vpa') (id' "(())")
+  print $ P.map (W.automatonAccepts vpa') (id' "(())")
   -- can't do this, since the word isn't well matched and "transform" only works for well matched words
   -- TODO: think of a way to handle this
   --print (id' "()()())")  
-  --print $ P.map (runDVPA vpa') (id' "()()())")
+  --print $ P.map (W.automatonAccepts vpa') (id' "()()())")
   print (id' "()[]()")  
-  print $ P.map (runDVPA vpa') (id' "()[]()")
+  print $ P.map (W.automatonAccepts vpa') (id' "()[]()")
 

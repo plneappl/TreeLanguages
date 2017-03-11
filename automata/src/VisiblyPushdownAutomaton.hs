@@ -8,10 +8,10 @@ import Alphabet
 import States
 import Data.Set
 
-class Alphabet a => StackAlph a where
+class StackAlph a where
   emptyStack :: a
 
-instance Alphabet s => StackAlph (Maybe s) where
+instance StackAlph (Maybe s) where
   emptyStack = Nothing
 
 data DVPA s g a where

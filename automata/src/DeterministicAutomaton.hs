@@ -150,8 +150,8 @@ instance Show a => Show (PushdownAlphabet a) where
 instance Alphabet a => Alphabet (PushdownAlphabet a) where
   allLetters = P.map Call allLetters ++ P.map Intern allLetters ++ P.map Return allLetters
 
--- need failure state, bottom letter --> States ~ Maybe s, StackAlph ~ Maybe a 
-toDVPA :: (Ord a, Ord s) => DeterministicAutomaton s a -> (DVPA (Maybe s) (Maybe a) (PushdownAlphabet a), RT a -> [(PushdownAlphabet a)])
+-- need failure state, bottom letter --> States ~ Maybe s, StackAlph ~ Maybe (a, s) 
+toDVPA :: (Ord a, Ord s) => DeterministicAutomaton s a -> (DVPA (Maybe s) (Maybe (a, s)) (PushdownAlphabet a), RT a -> [(PushdownAlphabet a)])
 toDVPA da@DA {} = (DVPA {
     statesD      = States $ map Just $ allStates $ states da,
     startStateD  = Just mempty,
@@ -159,12 +159,22 @@ toDVPA da@DA {} = (DVPA {
     callD        = map Call   $ fromList allLetters,
     retD         = map Return $ fromList allLetters,
     internD      = map Intern $ fromList allLetters,
-    deltaCallD   = \ (Call a) s -> (s, Just a),
+    -- Call saves current state on stack for return call, initializes lower state
+    --           ┌──┴──┐                  ┌──┴──┐           
+    --           s'    a           ⇒      s'    a          
+    --         ┌─┈┈┈┈┬─┴─┬─┈┈┈┈┐                │        
+    --         s1    si  sj    sn      0 + s1 + s2 + … + sn       
+    deltaCallD   = \ (Call a) s -> (Just mempty, s >>= \s' -> Just (a, s')),
+    -- Situation on return:    
+    --  ┌──┴──┐    need to calculate:    s'' + δ(a', s')
+    -- s''    a'    
+    --        │         
+    --        s'
     deltaRetD    = \ (Return a) s sa -> do
       s' <- s
-      a' <- sa
+      (a', s'') <- sa
       guard $ a == a'
-      return $ delta da a s',
+      return $ s'' `mappend` delta da a s',
     deltaInternD = \ (Intern a) s -> do
       s' <- s
       return $ s' `mappend` (delta da a mempty) 

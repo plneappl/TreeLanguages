@@ -9,5 +9,5 @@ class Alphabet a where
 instance Alphabet a => Alphabet (Maybe a) where
   allLetters = Nothing : map Just allLetters
 
-instance Alphabet a => Alphabet (a, a) where
+instance (Alphabet a, Alphabet s) => Alphabet (a, s) where
   allLetters = pairs allLetters allLetters
