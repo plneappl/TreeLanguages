@@ -16,7 +16,7 @@ import Lib
 data Alph = A | B deriving (Show, Eq, Ord)
 
 instance Alphabet Alph where
-  allLetters = [A, B]
+  allLetters = DS.fromList [A, B]
  
 data Sts = GA | GB | G | U | F deriving (Eq, Show, Ord)
 instance Monoid Sts where

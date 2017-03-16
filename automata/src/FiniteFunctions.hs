@@ -7,6 +7,7 @@ import Control.Arrow
 import Data.Set
 import Data.List (intercalate)
 
+-- |A finite endofunction @a → a@.
 data EndoFunL a = FunL { unFunL :: [(a, a)] } | Id deriving (Show, Eq, Ord)
 
 instance (Eq a) => Monoid (EndoFunL a) where
@@ -16,6 +17,7 @@ instance (Eq a) => Monoid (EndoFunL a) where
 combine :: Eq a => [EndoFunL a] -> [EndoFunL a] -> [EndoFunL a]
 combine = pairsWith chain
 
+-- |@chain == (.)@ 
 chain :: Eq a => EndoFunL a -> EndoFunL a -> EndoFunL a
 chain f1 Id = f1
 chain Id f2 = f2
@@ -35,15 +37,16 @@ image :: (Ord a) => EndoFunL a -> Set a
 image Id = empty
 image f = fromList $ P.map snd $ unFunL f
 
+-- |@appl == ($)@
 appl :: Eq a => EndoFunL a -> a -> a
-appl Id a = a
-appl (FunL ((a, b):fs)) a' | a == a' = b
-                    | otherwise = appl (FunL fs) a'
+appl f a = case applSafe f a of 
+  Just x -> x
 
-
+-- |Construct an @EndoFunL@ from a function @f@ and its domain @as@.
 finiteFunToTuples :: [a] -> (a -> a) -> EndoFunL a
 finiteFunToTuples as f = FunL $ P.map (\a -> (a, f a)) as
 
+-- |Construct all possible functions from a Domain @as@ to an image @bs@.
 allFunctions :: (Ord a) => Set a -> Set a -> Set (EndoFunL a)
 allFunctions as bs | null as || null bs = empty
                    | size as == 1 = fromList [FunL [(a, b)] | let a = elemAt 0 as, b <- toList bs]

@@ -1,4 +1,4 @@
-module Lib (powerset, chooseAll, pairs, pairsWith) where
+module Lib (powerset, chooseAll, pairs, pairsWith, pairs', pairsWith') where
 
 import Prelude hiding (map)
 import qualified Prelude as P
@@ -33,6 +33,13 @@ diagonal = concat . stripe
 pairsWith :: (a -> b -> c) -> [a] -> [b] -> [c]
 pairsWith f as bs = diagonal [[f a b | a <- as] | b <- bs]
 
+pairsWith' :: (Ord c) => (a -> b -> c) -> Set a -> Set b -> Set c
+pairsWith' f as bs = fromList $ pairsWith f (toList as) (toList bs)
+
 -- works with infinite lists
 pairs :: [a] -> [b] -> [(a, b)]
 pairs = pairsWith (,)
+
+pairs' :: (Ord a, Ord b) => Set a -> Set b -> Set (a, b)
+pairs' = pairsWith' (,)
+

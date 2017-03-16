@@ -14,9 +14,19 @@ import ForestAlgebra
 import GHC.IO.Encoding
 import EQClass
 
+{-|
+  This example demonstrates basic functionality and many conversions.
+  The automatons should accept a tree @t@ ⇔ @A ∈ t@.
+  Conversions demonstrated:
+  - Determinization
+  - DTA → Forest Algebra
+  - Forest Algebra → DTA
+  - Minimization
+|-}
+
 data Alph = A | B | F deriving (Show, Eq, Ord)
 instance Alphabet Alph where
-  allLetters = [A, B, F]
+  allLetters = fromList [A, B, F]
 
 
 data Sts = Y | N | E deriving (Show, Eq, Ord, Enum, Bounded)
@@ -36,20 +46,12 @@ instance Monoid Sts where
     _ `mappend` N = N
 
 d1 :: NA.DeltaProto Alph Sts
---  d1 A [] = singleton Y
---  d1 B [] = singleton N
---  d1 F xs | Y `elem` xs = singleton Y
---  d1 _ _ = singleton N
 d1 A mempty = singleton Y
 d1 B mempty = singleton N
 d1 F Y      = singleton Y
 d1 _ _      = singleton N
 
 d2 :: DA.DeltaProto Alph Sts
---  d2 A _ = Y
---  d2 B _ = N
---  d2 F xs | Y `elem` xs = Y
-        --  | otherwise = N
 d2 A _ = Y
 d2 B _ = N
 d2 F Y = Y

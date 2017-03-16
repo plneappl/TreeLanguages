@@ -1,0 +1,1 @@
+haddock -o doc -h Alphabet.hs Automaton.hs DeterministicAutomaton.hs EQClass.hs Ex1.hs FiniteFunctions.hs ForestAlgebra.hs NonDeterministicAutomaton.hs RoseTree.hs

@@ -15,9 +15,9 @@ instance Monoid Z2 where
   mappend a Zero = a
   mappend _ _ = Zero
 
-data Alph = A | B
+data Alph = A | B deriving (Show, Eq, Ord)
 instance Alphabet Alph where
-  allLetters = [A, B]
+  allLetters = DS.fromList [A, B]
 
 _States_Z2 :: States Z2 
 _States_Z2 = States $ DS.fromList [Zero, One]

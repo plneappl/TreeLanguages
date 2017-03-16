@@ -12,7 +12,7 @@ import GHC.IO.Encoding
 
 data Alph = A | B | F | Eps deriving (Show, Eq, Ord)
 instance Alphabet Alph where
-  allLetters = [A, B, F, Eps]
+  allLetters = DS.fromList [A, B, F, Eps]
 
 t1, ex2_1, ex2_2, ex2_3 :: RT Alph
 t1 = Br F [Lf A, Lf Eps, Lf B]

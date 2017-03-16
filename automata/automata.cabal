@@ -19,6 +19,7 @@ library
   -- other-modules:       Pretty, ParseForest, ParseLanguages, WordAutomaton, EpsWordNFA
   build-depends:       base >= 4.7 && < 5, 
                        containers >= 0.5.8
+                     , ListLike
                      , pretty-tree
                      , parsec
                      , tagged

@@ -15,7 +15,7 @@ import qualified WordAutomaton as W
 
 type Alph = Char
 instance Alphabet Alph where
-  allLetters = "[]()ab"
+  allLetters = fromList "[]()ab"
 instance StackAlph Alph where
   emptyStack = '#'
 

@@ -1,6 +1,16 @@
 {-# LANGUAGE GADTs, FlexibleInstances #-}
 
-module DeterministicAutomaton where
+module DeterministicAutomaton (
+      DeterministicAutomaton(..)
+    , DeltaProto
+    , runDeterministicAutomaton
+    , determinize
+    , minimize
+    , fromDVPA
+    , toDVPA
+    , PushdownAlphabet(..)
+    --, fromPathRegex
+  ) where
 
 import Prelude hiding (map, filter, null)
 import qualified Prelude as P
@@ -17,7 +27,12 @@ import VisiblyPushdownAutomaton
 import FiniteFunctions
 import Control.Monad (guard)
 import Control.Exception (assert)
+import qualified RegExp as RE
+import qualified TransMonoid as TM
+import qualified EpsWordNFA as NFA
+import qualified WordDFA as DFA
 
+-- |A DTA (Deterministic Tree Automaton) with States @s@ and Alphabet @a@. @s@ has to be a Monoid.
 data DeterministicAutomaton s a where
   DA :: (Alphabet a, Monoid s) => {
     delta :: DeltaProto a s,
@@ -35,6 +50,7 @@ instance (Show s, Show a) => Show (DeterministicAutomaton s a) where
 
 type DeltaProto a s = a -> s -> s
 
+-- |Run a DTA on a Tree.
 runDeterministicAutomaton :: DeterministicAutomaton s a -> RT a -> s
 runDeterministicAutomaton da@(DA delt _ _) (Br a rs) = delt a (DF.foldMap (runDeterministicAutomaton da) rs)
 runDeterministicAutomaton (DA delt _ _) (Lf a) = delt a mempty
@@ -44,6 +60,7 @@ instance (Eq s, Monoid s) => Automaton (DeterministicAutomaton s) where
   automatonAccepts da rt = runDeterministicAutomaton da rt `elem` acc da
   automatonAcceptsIO da rt = print $ if automatonAccepts da rt then "DTA accepted" else "DTA didn't accept"
 
+-- |Determinization of NTAs (Non-Deterministic Tree Automaton).
 determinize :: (Eq s, Ord s) => NA.NonDeterministicAutomaton s a -> DeterministicAutomaton (NonDetSimulation s) a
 determinize (na@(NA.NA {})) = DA delta' acc' (statesNonDetSimulation $ NA.states na) where
   acc' = map NonDetSimulation $ filter (\x -> any (`elem` x) $ NA.acc na) (powerset $ allStates $ NA.states na)
@@ -51,6 +68,7 @@ determinize (na@(NA.NA {})) = DA delta' acc' (statesNonDetSimulation $ NA.states
 
 
 -- http://antoine.delignat-lavaud.fr/doc/report-M1.pdf
+-- |Minimization of DTAs.
 minimize :: (Ord a, Ord s) => DeterministicAutomaton s a -> DeterministicAutomaton (EQClass a s) a
 minimize da@DA { delta = delta0, acc = acc0 } = DA { 
   delta = delta', acc = acc', states = states' } where
@@ -69,8 +87,8 @@ reachable (DA delta acc _) = let
   reach s_init where
   reach ss = let nss = union ss $ next ss in
     if nss == ss then ss else reach nss
-  next ss = union (map (\(a, Witness (s, t)) -> Witness (delta a s, [Br a t])) $ fromList $ pairs allLetters $ toList ss)
-                  (map (\(Witness (s1, t1), Witness (s2, t2)) -> Witness (mappend s1 s2, t1 ++ t2)) $ fromList $ pairs (toList ss) (toList ss))
+  next ss = union (map (\(a, Witness (s, t)) -> Witness (delta a s, [Br a t])) $ pairs' allLetters ss)
+                  (map (\(Witness (s1, t1), Witness (s2, t2)) -> Witness (mappend s1 s2, t1 ++ t2)) $ pairs' ss ss)
 
 
 
@@ -78,19 +96,19 @@ computeEquivSlow :: (Ord a, Ord s) => DeterministicAutomaton s a -> Set (s, s)
 computeEquivSlow (DA delta acc (States sts)) = 
   result $ runSteps markInit where
   delta' = flip delta mempty
-  firstIter = (map delta' $ fromList allLetters)
-  allStatesPairs = fromList $ pairs (toList sts) (toList sts)
+  firstIter = (map delta' allLetters)
+  allStatesPairs = pairs' sts sts
   inv sts = allStatesPairs \\ sts
-  markInitS = fromList $ pairs (toList acc) (toList $ sts \\ acc)
-  markInitQ = fromList $ pairs (toList $ firstIter \\ acc) (toList $ intersection firstIter acc)
+  markInitS = pairs' acc (sts \\ acc)
+  markInitQ = pairs' (firstIter \\ acc) (intersection firstIter acc)
   markInit = (markInitS, markInitQ)
   oneStepA a (s1, s2) = (delta a s1, delta a s2)
   oneStepS1 s (s1, s2) = (s1 `mappend` s, s2 `mappend` s)
   oneStepS2 s (s1, s2) = (s `mappend` s1, s `mappend` s2)
 
-  alphaStep'  (ms, mq) = unions $ ms :  P.map (\a -> filter (\s12 -> oneStepA  a s12 `member` (union ms mq)) (inv ms)) allLetters
-  stateStep1' (ms, mq) = unions $ ms : (P.map (\s -> filter (\s12 -> oneStepS1 s s12 `member` (union ms mq)) (inv ms)) $ toList sts)
-  stateStep2' (ms, mq) = unions $ mq : (P.map (\s -> filter (\s12 -> oneStepS2 s s12 `member` (union ms mq)) (inv mq)) $ toList sts)
+  alphaStep'  (ms, mq) = ms `union` foldMap (\a -> filter (\s12 -> oneStepA  a s12 `member` (union ms mq)) (inv ms)) allLetters
+  stateStep1' (ms, mq) = ms `union` foldMap (\s -> filter (\s12 -> oneStepS1 s s12 `member` (union ms mq)) (inv ms)) sts
+  stateStep2' (ms, mq) = mq `union` foldMap (\s -> filter (\s12 -> oneStepS2 s s12 `member` (union ms mq)) (inv mq)) sts
   alphaStep  msq@(ms, mq) = (alphaStep'  msq, mq)
   stateStep1 msq@(ms, mq) = (stateStep1' msq, mq)
   stateStep2 msq@(ms, mq) = (ms, stateStep2' msq)
@@ -102,7 +120,7 @@ computeEquivSlow (DA delta acc (States sts)) =
 
   result (ms, mq) = union (inv ms) (inv mq)
 
-
+-- | DVPA (Deterministic Visibly Pushdown Automaton) → DTA. Also returns a converter of words to trees.
 fromDVPA :: (Show a) => DVPA s g a -> (DeterministicAutomaton (EndoFunL s) (a, a), [a] -> [RT (a, a)])
 fromDVPA vpa@DVPA {} = (DA {
     delta   = delta',   
@@ -157,18 +175,19 @@ instance Show a => Show (PushdownAlphabet a) where
   show (Call a) = show a
   show (Intern a) = show a ++ show a ++ "'"
   show (Return a) = show a ++ "'"
-instance Alphabet a => Alphabet (PushdownAlphabet a) where
-  allLetters = P.map Call allLetters ++ P.map Intern allLetters ++ P.map Return allLetters
+instance (Alphabet a, Ord a) => Alphabet (PushdownAlphabet a) where
+  allLetters = map Call allLetters `union` map Intern allLetters `union` map Return allLetters
 
 -- need failure state, bottom letter --> States ~ Maybe s, StackAlph ~ Maybe (a, s) 
+-- |DTA → DVPA. Also returns a converter of trees to words.
 toDVPA :: (Ord a, Ord s) => DeterministicAutomaton s a -> (DVPA (Maybe s) (Maybe (a, s)) (PushdownAlphabet a), RT a -> [(PushdownAlphabet a)])
 toDVPA da@DA {} = (DVPA {
     statesD      = States $ map Just $ allStates $ states da,
     startStateD  = Just mempty,
     accD         = map Just $ acc da,
-    callD        = map Call   $ fromList allLetters,
-    retD         = map Return $ fromList allLetters,
-    internD      = map Intern $ fromList allLetters,
+    callD        = map Call   allLetters,
+    retD         = map Return allLetters,
+    internD      = map Intern allLetters,
     -- Call saves current state on stack for return call, initializes lower state
     --           ┌──┴──┐                  ┌──┴──┐           
     --           s'    a           ⇒      s'    a          
@@ -195,3 +214,30 @@ toDVPA da@DA {} = (DVPA {
   transform (Br l ts) = Call l : (concatMap transform ts) ++ [Return l]
 
 
+newtype AndSet a = AndSet { unAndSet :: Set a } deriving (Eq, Show, Ord)
+instance (Ord a) => Monoid (AndSet a) where
+  mempty = AndSet $ mempty
+  mappend (AndSet s1) (AndSet s2) = AndSet $ s1 `intersection` s2
+-- -- |Define an automaton via Regex. Accept ⇔ all paths are accepted by Regex.
+--fromPathRegexAnd :: (Eq a, Alphabet a, Ord a) => RE.RegExp a -> DeterministicAutomaton (AndSet s) a
+--fromPathRegexAnd r = 
+--  DA { delta = delta', acc = acc', states = states' } where
+--  nfa = NFA.fromRegExp r
+--  dfa = DFA.determinize nfa 
+--  morph :: a -> s
+--  morph = undefined
+--  delta' a s = AndSet $ map (morph a `mappend`) $ unAndSet s
+--  acc' = map AndSet $ DFA.acc dfa
+--  states' = States $ map AndSet $ DFA.states dfa
+
+-- -- |Define an automaton via Regex. Accept ⇔ any path is accepted by Regex.
+--fromPathRegexAnd :: (Eq a, Alphabet a, Ord a) => RE.RegExp a -> DeterministicAutomaton (Set s) a
+--fromPathRegexAnd r = 
+--  DA { delta = delta', acc = acc', states = states' } where
+--  nfa = NFA.fromRegExp r
+--  dfa = DFA.determinize nfa 
+--  morph :: a -> s
+--  morph = undefined
+--  delta' a s = map (morph a `mappend`) s
+--  acc' = DFA.acc dfa
+--  states' = States $ DFA.states dfa

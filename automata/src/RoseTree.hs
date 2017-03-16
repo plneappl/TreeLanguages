@@ -1,7 +1,7 @@
 {-# LANGUAGE TypeSynonymInstances, FlexibleInstances, DeriveFunctor #-}
 module RoseTree where
 
-
+-- |Unranked Trees AKA RoseTrees.
 data RT a = Lf a | Br a [RT a] deriving (Show, Eq, Functor, Ord)
 
 newtype Forest a = Forest { trees :: [RT a] }
@@ -15,7 +15,6 @@ instance Monoid (Forest a) where
 -- page 2:
 --
 -- encoding see http://strictlypositive.org/diff.pdf
-
 data Context a = Context { lForest :: Forest a
                          , cTree   :: CTree a
                          , rForest :: Forest a }
@@ -30,6 +29,7 @@ newtype CTree a = CTree { unCTree :: [(Forest a, a, Forest a)] }
 --  / | \
 --  l ☐ r
 
+-- |Insert a Forest into a Context.
 insertForest :: Context a -> Forest a -> Forest a
 insertForest c f = lForest c `mappend` appended `mappend` rForest c
     where

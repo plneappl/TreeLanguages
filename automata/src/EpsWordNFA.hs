@@ -47,7 +47,7 @@ runEpsWordNFA na = foldl applyTransition (doEpsTrans $ start na)
 --  type TestAlph =  Char
 
 --  instance Alphabet Char where
-    --  allLetters = ['a' .. 'b']
+    --  allLetters = fromList ['a' .. 'b']
 
 --  testAut :: EpsWordNFA TestStates TestAlph
 --  testAut = EpsWNFA delta epsDelta (DS.fromList [SA,SB]) (DS.singleton SD)

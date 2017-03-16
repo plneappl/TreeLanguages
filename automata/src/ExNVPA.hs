@@ -10,7 +10,7 @@ import Prelude hiding (map, filter, Word)
 
 type Alph = Char
 instance Alphabet Alph where
-  allLetters = "()[]"
+  allLetters = fromList "()[]"
 instance StackAlph Alph where
   emptyStack = '#'
 

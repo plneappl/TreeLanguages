@@ -49,12 +49,12 @@ transMonoid da = FullTM { zero = z, elems = e }
    where
       z = TM { aut = da, dom = DS.toList (states da), trans = id }
       ftFromLetter a = TM { aut = da, dom = fmap (delta da a) (dom z), trans = delta da a }
-      allSingleTrans = fmap ftFromLetter allLetters
+      allSingleTrans = DS.map ftFromLetter allLetters
       e = oneStepClosure $ DS.singleton z
       oneStepClosure fs = let doLeftStep fa  = DS.map (fa `mappend`) fs
                               doRightStep fa = DS.map (`mappend` fa) fs
-                              leftNew        = DS.unions $ fmap doLeftStep allSingleTrans
-                              rightNew       = DS.unions $ fmap doLeftStep allSingleTrans
+                              leftNew        = foldMap doLeftStep allSingleTrans
+                              rightNew       = foldMap doLeftStep allSingleTrans
                               newFs          = DS.union leftNew rightNew
                            in if newFs `DS.isSubsetOf` fs
                               then fs
@@ -68,7 +68,7 @@ _States_Sts = States $ DS.fromList [SZ .. SF]
 data Alph = AZ | AO
     deriving (Show,Eq,Ord,Enum)
 instance Alphabet Alph where
-    allLetters = [AZ, AO]
+    allLetters = DS.fromList [AZ, AO]
 
 tmz :: TransMonoid Sts Alph
 tmz = TM { aut = da, dom = img, trans = d AZ }

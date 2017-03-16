@@ -46,7 +46,7 @@ reachableStates ss d = stepClosure ss
                in if DS.null (reachable' DS.\\ states)
                   then states
                   else stepClosure (DS.union states reachable')
-      doOneStep s = DS.fromList $ fmap (flip d s) allLetters
+      doOneStep s = DS.map (flip d s) allLetters
 
 determinize :: (Ord s, Alphabet a) => Eps.EpsWordNFA s a -> WordDFA (DS.Set s) a
 determinize ena = WordDFA { start = start', delta = delta', acc = acc', states=states' }

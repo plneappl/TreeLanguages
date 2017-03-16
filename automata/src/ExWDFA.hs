@@ -26,13 +26,13 @@ _States_Sts = States $ DS.fromList [SZ .. SF]
 data Alph = AZ | AO
     deriving (Show,Eq,Ord,Enum)
 instance Alphabet Alph where
-    allLetters = [AZ, AO]
+    allLetters = DS.fromList [AZ, AO]
 
 data Chars = A | B | C | D | E | F | G | H | I | J | K | L | M
            | N | O | P | Q | R | S | T | U | V | W | X | Y | Z
            deriving (Show,Ord,Eq,Enum)
 instance Alphabet Chars where
-    allLetters = [ A .. Z ]
+    allLetters = DS.fromList [ A .. Z ]
 
 -- w \in L <=> w \equiv 2 mod 5
 da :: WordDFA Sts Alph

@@ -5,6 +5,7 @@ import Data.List
 import RoseTree
 import Data.Tagged
 import Lib
+import Data.Set (toList, fromList)
   
 treesOfSizeAtMost :: (Alphabet a, Enum a, Bounded a) => Int -> [RT a]
 treesOfSizeAtMost 0 = []
@@ -16,20 +17,20 @@ allTrees :: (Alphabet a) => Tagged a [RT a]
 allTrees = do
   fti <- flatTreesInf
   let subTrees = subsequences fti
-  let symbolsAndSubtrees = pairs allLetters subTrees
+  let symbolsAndSubtrees = pairs (toList allLetters) subTrees
   let bigTrees = map (uncurry Br) symbolsAndSubtrees
   return $ concatMap (\(a, b) -> [a,b]) $ zip bigTrees fti 
 
 -- will produce all trees of depth 1
 flatTreesInf :: (Alphabet a) => Tagged a [RT a]
 flatTreesInf = let
-  leavesList = takeAnyInf (map Lf allLetters)
-  branchLetters = allLetters
+  leavesList = takeAnyInf (map Lf (toList allLetters))
+  branchLetters = (toList allLetters)
   symbolAndLeaves = pairs branchLetters leavesList in
   Tagged $ map (uncurry Br) symbolAndLeaves
 
 flatTrees :: Alphabet a => Int -> [RT a]
-flatTrees k = concatMap (\l -> map (Br l) $ takeAnyAndLess (map Lf allLetters) k) allLetters
+flatTrees k = concatMap (\l -> map (Br l) $ takeAnyAndLess (map Lf (toList allLetters)) k) allLetters
 
 -- takeAnyAndLess xs ∞
 takeAnyInf :: [a] -> [[a]]
@@ -45,7 +46,7 @@ takeAny xs k = concatMap (\ys -> map (: ys) xs) $ takeAny xs (k - 1)
 
 data Alph = A | B | F deriving (Show, Eq, Ord)
 instance Alphabet Alph where
-  allLetters = [A, B, F]
+  allLetters = fromList [A, B, F]
 
 main :: IO ()
 main = do
