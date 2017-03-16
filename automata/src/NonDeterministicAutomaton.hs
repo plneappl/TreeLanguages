@@ -1,3 +1,7 @@
+{-| 
+Module      : NonDeterministicAutomaton
+Description : Contains the definition of Non-Deterministic Tree Automatons.
+-}
 {-# LANGUAGE GADTs, MultiParamTypeClasses #-}
 module NonDeterministicAutomaton where
 import Alphabet

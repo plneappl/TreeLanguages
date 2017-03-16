@@ -1,3 +1,17 @@
+{-| 
+Module      : ForestAlgebra
+Description : Contains the definition of 'ForestAlgebra's and things that are related to them.
+
+The Module "ForestAlgebra" contains:
+1. Definitions:
+  - of the data type 'ForestAlgebra'
+  - of the data type 'Morph', which is a Morphism between Forest Algebras
+  - type aliases for Free Forest Algebras
+2. Morphism constructors:
+  - 'morphFromBeta', which infers α from β
+  - 'morphFromFun', which infers a Morphism from the Free Forest Algebra according to a function mapping letters to a vertical monoid
+3. Forest Algebra transformations to and from "DeterministicAutomaton"s
+-}
 {-# LANGUAGE GADTs, TypeApplications #-}
 module ForestAlgebra where
 import RoseTree

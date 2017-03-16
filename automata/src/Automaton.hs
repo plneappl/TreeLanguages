@@ -1,3 +1,9 @@
+{-| 
+Module      : Automaton
+Description : Contains the definition of the class 'Automaton'.
+
+The Module "Automaton" contains the definition for the class 'Automaton', which is implemented by all models of different Tree Automatons.
+-}
 module Automaton where
 
 import Alphabet

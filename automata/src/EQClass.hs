@@ -1,3 +1,10 @@
+{-| 
+Module      : EQClass
+Description : Contains the definition of equivalence relations and classes.
+
+The Module EQClass contains definitions of equivalence relations 'EQRel' and classes 'EQClass'. 
+Elements of equivalence relations/equivalence classes know which tree produces them, so called 'Witness'es.
+-}
 module EQClass where
 
 import Prelude hiding (map, filter)

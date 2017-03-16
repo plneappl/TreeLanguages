@@ -1,3 +1,8 @@
+{-| 
+Module      : FiniteFunctions
+Description : Contains the definition of 'FiniteFunctions', which are required for equivalence tests on functions.
+
+-}
 module FiniteFunctions where
 import Lib
 

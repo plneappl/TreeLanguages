@@ -1,3 +1,7 @@
+{-| 
+Module      : RoseTree
+Description : Contains the definition of Unranked Trees AKA Rose Trees, 'Forest's and 'Context's.
+-}
 {-# LANGUAGE TypeSynonymInstances, FlexibleInstances, DeriveFunctor #-}
 module RoseTree where
 

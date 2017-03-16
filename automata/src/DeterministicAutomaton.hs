@@ -1,3 +1,11 @@
+{-| 
+Module      : DeterministicAutomaton
+Description : Contains the definition of DTAs, operations on it and most conversions from and to it.
+
+The Module DeterministicAutomaton contains the data definition of DTAs 'DA', 
+methods for determinizing NTAs and minimizing DTAs, 
+as well as converters to and from VDPAs.
+-}
 {-# LANGUAGE GADTs, FlexibleInstances #-}
 
 module DeterministicAutomaton (
@@ -32,7 +40,7 @@ import qualified TransMonoid as TM
 import qualified EpsWordNFA as NFA
 import qualified WordDFA as DFA
 
--- |A DTA (Deterministic Tree Automaton) with States @s@ and Alphabet @a@. @s@ has to be a Monoid.
+-- |A DTA (Deterministic Tree Automaton) with 'States' @s@ and 'Alphabet' @a@. @s@ has to be a 'Monoid'.
 data DeterministicAutomaton s a where
   DA :: (Alphabet a, Monoid s) => {
     delta :: DeltaProto a s,
@@ -120,7 +128,7 @@ computeEquivSlow (DA delta acc (States sts)) =
 
   result (ms, mq) = union (inv ms) (inv mq)
 
--- | DVPA (Deterministic Visibly Pushdown Automaton) → DTA. Also returns a converter of words to trees.
+-- |'DVPA' (Deterministic Visibly Pushdown Automaton) → DTA. Also returns a converter of words to trees.
 fromDVPA :: (Show a) => DVPA s g a -> (DeterministicAutomaton (EndoFunL s) (a, a), [a] -> [RT (a, a)])
 fromDVPA vpa@DVPA {} = (DA {
     delta   = delta',   
