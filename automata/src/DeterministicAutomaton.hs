@@ -17,6 +17,7 @@ module DeterministicAutomaton (
     , fromDVPA
     , toDVPA
     , PushdownAlphabet(..)
+    , reachable
     --, fromPathRegex
   ) where
 

@@ -1,7 +1,10 @@
-extra-deps:
-- pretty-tree-0.1.0.0
-resolver: lts-8.0
 flags: {}
 extra-package-dbs: []
 packages:
 - '.'
+extra-deps:
+- containers-0.5.10.1
+- pretty-tree-0.1.0.0
+- primitive-0.6.2.0
+- vector-0.12.0.1
+resolver: lts-8.0
