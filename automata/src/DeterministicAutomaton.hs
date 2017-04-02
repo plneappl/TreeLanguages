@@ -6,7 +6,7 @@ The Module DeterministicAutomaton contains the data definition of DTAs 'DA',
 methods for determinizing NTAs and minimizing DTAs, 
 as well as converters to and from VDPAs.
 -}
-{-# LANGUAGE GADTs, FlexibleInstances #-}
+{-# LANGUAGE GADTs, FlexibleInstances, ScopedTypeVariables #-}
 
 module DeterministicAutomaton (
       DeterministicAutomaton(..)
@@ -17,7 +17,9 @@ module DeterministicAutomaton (
     , fromDVPA
     , toDVPA
     , PushdownAlphabet(..)
-    --, fromPathRegex
+    , reachable
+    , fromPathRegexOr
+    , fromPathRegexAnd
   ) where
 
 import Prelude hiding (map, filter, null)
@@ -39,6 +41,7 @@ import qualified RegExp as RE
 import qualified TransMonoid as TM
 import qualified EpsWordNFA as NFA
 import qualified WordDFA as DFA
+import Debug.Trace (trace)
 
 -- |A DTA (Deterministic Tree Automaton) with 'States' @s@ and 'Alphabet' @a@. @s@ has to be a 'Monoid'.
 data DeterministicAutomaton s a where
@@ -222,30 +225,40 @@ toDVPA da@DA {} = (DVPA {
   transform (Br l ts) = Call l : (concatMap transform ts) ++ [Return l]
 
 
-newtype AndSet a = AndSet { unAndSet :: Set a } deriving (Eq, Show, Ord)
-instance (Ord a) => Monoid (AndSet a) where
-  mempty = AndSet $ mempty
-  mappend (AndSet s1) (AndSet s2) = AndSet $ s1 `intersection` s2
--- -- |Define an automaton via Regex. Accept ⇔ all paths are accepted by Regex.
---fromPathRegexAnd :: (Eq a, Alphabet a, Ord a) => RE.RegExp a -> DeterministicAutomaton (AndSet s) a
---fromPathRegexAnd r = 
---  DA { delta = delta', acc = acc', states = states' } where
---  nfa = NFA.fromRegExp r
---  dfa = DFA.determinize nfa 
---  morph :: a -> s
---  morph = undefined
---  delta' a s = AndSet $ map (morph a `mappend`) $ unAndSet s
---  acc' = map AndSet $ DFA.acc dfa
---  states' = States $ map AndSet $ DFA.states dfa
+-- reduce to acceptance by DFA via 
+--       ∀ p: ϕ(p)  ⇔  ¬∃ p: ¬ϕ(p)
+--    invert ACC(DTA)--^     ^-- invert ACC(DFA(NFA(RegEx)))
 
--- -- |Define an automaton via Regex. Accept ⇔ any path is accepted by Regex.
---fromPathRegexAnd :: (Eq a, Alphabet a, Ord a) => RE.RegExp a -> DeterministicAutomaton (Set s) a
---fromPathRegexAnd r = 
---  DA { delta = delta', acc = acc', states = states' } where
---  nfa = NFA.fromRegExp r
---  dfa = DFA.determinize nfa 
---  morph :: a -> s
---  morph = undefined
---  delta' a s = map (morph a `mappend`) s
---  acc' = DFA.acc dfa
---  states' = States $ DFA.states dfa
+-- |Define an automaton via Regex. Accept ⇔ all paths are accepted by Regex.
+fromPathRegexAnd :: forall a s nds. (nds ~ Set NFA.CountableState, s ~ TM.TransMonoid nds a, Eq a, Alphabet a, Ord a) => RE.RegExp a -> DeterministicAutomaton (Set s) a
+fromPathRegexAnd r = dta { acc = stsDTA \\ acc dta } where
+  nfa :: NFA.EpsWordNFA NFA.CountableState a
+  nfa = NFA.fromRegExp r
+  dfa :: DFA.WordDFA nds a
+  dfa = DFA.determinize nfa  
+  stsDFA = DFA.states dfa
+  dfa' = dfa { DFA.acc = stsDFA \\ DFA.acc dfa }
+  dta = fromDFA dfa'
+  stsDTA = allStates $ states dta
+
+
+-- |Define an automaton via Regex. Accept ⇔ any path is accepted by Regex.
+fromPathRegexOr :: forall a s nds. 
+  (nds ~ Set NFA.CountableState, s ~ TM.TransMonoid nds a,
+    Eq a, Alphabet a, Ord a) => 
+  RE.RegExp a -> DeterministicAutomaton (Set s) a
+fromPathRegexOr r = fromDFA dfa where
+  nfa :: NFA.EpsWordNFA NFA.CountableState a
+  nfa = NFA.fromRegExp r
+  dfa :: DFA.WordDFA nds a
+  dfa = DFA.determinize nfa 
+
+fromDFA :: forall a s nds. (nds ~ Set NFA.CountableState, s ~ TM.TransMonoid nds a, Eq a, Alphabet a, Ord a) => DFA.WordDFA nds a -> DeterministicAutomaton (Set s) a
+fromDFA dfa = DA { delta = delta', acc = acc', states = states' } where
+  tfa :: DFA.WordDFA s a
+  tfa = TM.transWDFA dfa
+  morph :: a -> s
+  morph = snd $ TM.transMonoid dfa
+  delta' a s = if null s then singleton $ morph a else map (morph a `mappend`) s
+  acc' = filter (\s -> not $ null $ s `intersection` DFA.acc tfa) $ allStates states'
+  states' = States $ powerset $ DFA.states tfa

@@ -1,8 +1,15 @@
 module Test where
 
-chooseAll :: [[a]] -> [[a]]
-chooseAll [] = []
-chooseAll [xs] = [[x] | x <- xs]
-chooseAll (xs:xss) = [x:y | x <- xs, y <- chooseAll xss]
+import Data.List
+import Control.Monad
 
-main = print $ chooseAll [[1, 2], [3, 4], [5, 6]]
+calc = sort $ do
+  let target = 1.45
+  let stamps = [0.45, 0.45, 0.45, 0.45, 0.58, 0.7, 0.7]
+  subStamps <- nub $ subsequences stamps
+  let postage = sum subStamps
+  guard $ postage >= target
+  return (postage, subStamps)
+
+main :: IO ()
+main = print calc
