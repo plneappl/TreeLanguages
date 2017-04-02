@@ -253,7 +253,10 @@ fromPathRegexOr r = fromDFA dfa where
   dfa :: DFA.WordDFA nds a
   dfa = DFA.determinize nfa 
 
-fromDFA :: forall a s nds. (nds ~ Set NFA.CountableState, s ~ TM.TransMonoid nds a, Eq a, Alphabet a, Ord a) => DFA.WordDFA nds a -> DeterministicAutomaton (Set s) a
+-- helper for fromPathRegexAnd/Or. 
+fromDFA :: forall a s nds. 
+  (s ~ TM.TransMonoid nds a, Ord nds, StatesC nds, Eq a, Alphabet a, Ord a) => 
+  DFA.WordDFA nds a -> DeterministicAutomaton (Set s) a
 fromDFA dfa = DA { delta = delta', acc = acc', states = states' } where
   tfa :: DFA.WordDFA s a
   tfa = TM.transWDFA dfa
@@ -262,3 +265,4 @@ fromDFA dfa = DA { delta = delta', acc = acc', states = states' } where
   delta' a s = if null s then singleton $ morph a else map (morph a `mappend`) s
   acc' = filter (\s -> not $ null $ s `intersection` DFA.acc tfa) $ allStates states'
   states' = States $ powerset $ DFA.states tfa
+
