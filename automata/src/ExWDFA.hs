@@ -1,4 +1,4 @@
-
+{-# LANGUAGE ExistentialQuantification #-}
 import Prelude hiding (Word)
 import States
 import Alphabet
@@ -15,6 +15,7 @@ import Control.Monad
 import qualified Data.Set as DS
 
 import Data.Foldable (foldMap)
+import GHC.IO.Encoding
 
 import Lib
 
@@ -146,43 +147,58 @@ rda = determinize rna
 rma = minimize rda
 
 --  trans :: FullTransMonoid 
-trans = TR.transMonoid rma
+(trans, morph0) = TR.transMonoid rma
+ 
 
 morph :: [ Alph ] -> TR.TransMonoid (DS.Set (DS.Set Eps.CountableState)) Alph
 morph [] = TR.zero trans
-morph as = foldMap simpleFunc as
-   where
-      simpleFunc a = TR.TM { TR.aut = rma, TR.dom = fmap (delta rma a) (TR.dom $ TR.zero trans), TR.trans = delta rma a }
+morph as = foldMap morph0 as
+--morph as = foldMap simpleFunc as
+--   where
+--      simpleFunc a = TR.TM { TR.aut = rma, TR.dom = fmap (delta rma a) (TR.dom $ TR.zero trans), TR.trans = delta rma a }
 
-allFAs :: (Alphabet a, Eq a) => RegExp a -> (Eps.EpsWordNFA Eps.CountableState a, WordDFA (DS.Set Eps.CountableState) a, WordDFA (DS.Set (DS.Set Eps.CountableState)) a)
-allFAs r = (na, da, ma)
+data Runnable a = forall at. WordAutomaton at => MkRunnable (at a)
+pack :: WordAutomaton at => at a -> Runnable a
+pack = MkRunnable
+
+--allFAs :: (Alphabet a, Eq a) => RegExp a -> (Eps.EpsWordNFA Eps.CountableState a, WordDFA (DS.Set Eps.CountableState) a, WordDFA (DS.Set (DS.Set Eps.CountableState)) a)
+allFAs :: (Alphabet a, Eq a) => RegExp a -> [(String, Runnable a)]
+allFAs r = [na, da, ma, da1, ma1]
     where
-        na = Eps.fromRegExp r
-        da = determinize na
-        ma = minimize da
+        na0 = Eps.fromRegExp r
+        na = ("NFA", pack $ na0)
+        da0 = determinize na0
+        da = ("DFA", pack $ da0)
+        da1 = ("TDFA", pack $ TR.transWDFA da0)
+        ma0 = minimize da0
+        ma = ("MDFA", pack $ ma0)
+        ma1 = ("TMDFA", pack $ TR.transWDFA ma0)
 
-runAll ::  (Alphabet a, Eq a) => Word a -> (Eps.EpsWordNFA Eps.CountableState a, WordDFA (DS.Set Eps.CountableState) a, WordDFA (DS.Set (DS.Set Eps.CountableState)) a) -> (Bool, Bool, Bool)
-runAll w (na,da,ma) = (automatonAccepts na w, automatonAccepts da w, automatonAccepts ma w)
+runAll ::  (Alphabet a, Eq a) => Word a -> [(String, Runnable a)] -> [(String, Bool)]
+runAll w = map f where
+  f (s, MkRunnable aut) = (s, automatonAccepts aut w)
 
 checkAll :: [String] -> String -> IO ()
 checkAll ss r = print re >> mapM_ checkSingle ss
     where
-        re            = fromRight $ parse rParser "" r
-        (na, da, ma) = allFAs re
-        checkSingle s = let w               = parseAlphString s
-                            (nab, dab, mab) = runAll w (na, da, ma)
-                        in putStrLn $ s ++ ":\t" ++ "NFA: " ++ show nab ++ "\tDFA: " ++ show dab ++ "\tMDFA: " ++ show mab
+        re   = fromRight $ parse rParser "" r
+        auts = allFAs re
+        checkSingle s = let w     = parseAlphString s
+                            bools = runAll w auts
+                        in putStrLn $ s ++ ":\t" ++ (foldMap (\(s, b) -> "\t" ++ s ++ ": " ++ show b) bools)
 
 checkAll' :: [String] -> String -> IO ()
 checkAll' ss r = print re >> mapM_ checkSingle ss
     where
-        re            = fromRight $ parse rParser' "" r
-        (na, da, ma) = allFAs re
-        checkSingle s = let w               = parseCharsString s
-                            (nab, dab, mab) = runAll w (na, da, ma)
-                        in putStrLn $ s ++ ":\t" ++ "NFA: " ++ show nab ++ "\tDFA: " ++ show dab ++ "\tMDFA: " ++ show mab
+        re   = fromRight $ parse rParser' "" r
+        auts = allFAs re
+        checkSingle s = let w     = parseCharsString s
+                            bools = runAll w auts
+                        in putStrLn $ s ++ ":\t" ++ (foldMap (\(s, b) -> "\t" ++ s ++ ": " ++ show b) bools)
 
 main :: IO ()
 main = do
-    mapM_ (\(s,d,m) -> putStrLn $ s ++ ":\t" ++ d ++ "\t" ++ m) $ take 40 $ fmap (\s -> let w = parseAlphString s in (s, "DFA: " ++ show (automatonAccepts da'' w), "MDFA: " ++ show (automatonAccepts ma'' w))) allWords
-    mapM_ (\(s,n,d,m) -> putStrLn $ s ++ ":\t" ++ n ++ "\t" ++ d ++ "\t" ++ m) $ take 40 $ fmap (\s -> let w = parseAlphString s in (s, "DFA: " ++ show (automatonAccepts ena w), "DFA: " ++ show (automatonAccepts da' w), "MDFA: " ++ show (automatonAccepts ma' w))) allWords
+    setLocaleEncoding utf8
+    mapM_ (\(s,d,m) -> putStrLn $ s ++ ":\t" ++ d ++ "\t" ++ m) $ fmap (\s -> let w = parseAlphString s in (s, "DFA: " ++ show (automatonAccepts da'' w), "MDFA: " ++ show (automatonAccepts ma'' w))) $ take 40 allWords
+    mapM_ (\(s,n,d,m) -> putStrLn $ s ++ ":\t" ++ n ++ "\t" ++ d ++ "\t" ++ m) $ fmap (\s -> let w = parseAlphString s in (s, "DFA: " ++ show (automatonAccepts ena w), "DFA: " ++ show (automatonAccepts da' w), "MDFA: " ++ show (automatonAccepts ma' w))) $ take 40 allWords
+    checkAll (take 40 allWords) "(01|1*10|e)"
