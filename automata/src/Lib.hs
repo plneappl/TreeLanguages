@@ -1,9 +1,10 @@
-module Lib (powerset, chooseAll, pairs, pairsWith, pairs', pairsWith') where
+module Lib (powerset, chooseAll, pairs, pairsWith, pairs', pairsWith', expect, fixIOWin) where
 
 import Prelude hiding (map)
 import qualified Prelude as P
 import Data.Set
 import Data.List (nub)
+import GHC.IO.Encoding
 
 powerset :: Ord a => Set a -> Set (Set a)
 powerset s
@@ -43,3 +44,12 @@ pairs = pairsWith (,)
 pairs' :: (Ord a, Ord b) => Set a -> Set b -> Set (a, b)
 pairs' = pairsWith' (,)
 
+expectWidth :: Int
+expectWidth = 20
+expect :: Show a => a -> a -> String
+expect x y = fixWidth expectWidth (show x) ++ " ⇔ " ++ show y where
+  fixWidth :: Int -> String -> String
+  fixWidth t s = replicate (t - length s) ' ' ++ s
+
+fixIOWin :: IO ()
+fixIOWin = setLocaleEncoding utf8
