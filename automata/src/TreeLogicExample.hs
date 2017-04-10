@@ -6,7 +6,7 @@ import Lib
 import Automaton
 import qualified Data.Set as DS
 import Alphabet
-import DeterministicAutomaton
+import NonDeterministicAutomaton
 
 instance Alphabet Int where
   allLetters = DS.fromList [0, 1, 2, 3, 4, 5]
@@ -35,10 +35,17 @@ f2''' = bindAllVars f2''
 f3 = LChild "x" "y"
 f4 = RChild "x" "y"
 
-d1 = formulaToDTA f1 
-d2 = formulaToDTA f2 
-d3 = formulaToDTA f3 
-d4 = formulaToDTA f4
+d1 = formulaToNTA f1 
+d2 = formulaToNTA f2 
+d3 = formulaToNTA f3 
+d4 = formulaToNTA f4
+
+xRoot :: Formula Int
+xRoot = forallFO "y" $ And (Not $ LChild "y" "x") (Not $ RChild "y" "x") 
+root2 = ExistsFO "x" $ And xRoot (Label "x" 2)
+dXRoot = formulaToNTA xRoot
+dRoot2 = formulaToNTA root2
+exRoot = Br (2, DS.singleton "x") [ex0', ex1']
 
 ex3, ex4, ex5 :: RT (Int, DS.Set Ident)
 ex3 = Br (0, DS.singleton "x") [Lf (0, DS.singleton "y"), Lf (0, DS.singleton "y")]
@@ -76,3 +83,7 @@ main = do
   putStrLn (treeAccepted f2 ex0 `expect` automatonAccepts d2 ex0')
   putStrLn (treeAccepted f2 ex1 `expect` automatonAccepts d2 ex1')
   putStrLn (treeAccepted f2 ex2 `expect` automatonAccepts d2 ex2')
+  print ""
+  putStrLn (treeAccepted root2 ex0 `expect` automatonAccepts dRoot2 ex0')
+  putStrLn (treeAccepted root2 ex1 `expect` automatonAccepts dRoot2 ex1')
+  putStrLn (treeAccepted root2 ex2 `expect` automatonAccepts dRoot2 ex2')

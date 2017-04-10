@@ -11,7 +11,7 @@ import qualified Data.Set as DS
 import Data.Set ((\\))
 import Lib
 import Prelude hiding (negate)
-import DeterministicAutomaton
+import NonDeterministicAutomaton
 import States
 import Control.Exception (assert)
 import Debug.Trace (trace)
@@ -44,12 +44,14 @@ instance (Show a) => Show (Formula a) where
   show (Not f)        = "¬" ++ show f
 
 data BoolState = Good | Fail deriving (Eq, Ord, Show)
-data BT a = L a | T (BT a) (BT a) deriving (Eq, Ord, Show)
-instance Monoid a => Monoid (BT a) where
-  mempty = L mempty
+data BT a = L a | T (BT a) (BT a) | TEmpty deriving (Eq, Ord, Show)
+instance (Show a, Monoid a) => Monoid (BT a) where
+  mempty = TEmpty
   mappend (L a1)    (L a2)    = L (mappend a1 a2)
   mappend (T a1 a2) (T b1 b2) = T (mappend a1 b1) (mappend a2 b2)
-  mappend _ _ = undefined
+  mappend TEmpty x = x
+  mappend x TEmpty = x
+  mappend t1 t2 = trace (show t1) $ trace (show t2) $ error "malformed states"
 
 instance Monoid BoolState where
   Good `mappend` _ = Good
@@ -72,78 +74,112 @@ instance Applicative MList where
 data LastVars s = LV { last :: [DS.Set Ident], this :: s } deriving (Show)
 instance Eq s => Eq (LastVars s) where
   (LV _ s1) == (LV _ s2) = s1 == s2
-deriving instance Ord s => Ord (LastVars s)
+
+instance Ord s => Ord (LastVars s) where
+  compare (LV _ s1) (LV _ s2) = compare s1 s2
+
+instance HasEmptyState (LastVars (BT BoolState)) where
+  emptyState = LV [] mempty
 
 instance (Monoid s) => Monoid (LastVars s) where
   mempty = LV [] mempty
   mappend (LV a1 s1) (LV a2 s2) = LV (mappend a1 a2) (mappend s1 s2)
 
-formulaToDTA :: forall a a' s. 
+instance HasEmptyState (Maybe s) where
+  emptyState = Nothing
+
+treeIsAssignment :: forall a a' s. 
+  (Alphabet a, Eq a, Ord a, Show s, Show a,
+    a' ~ (a, DS.Set Ident), 
+    s ~ Maybe (DS.Set Ident)) => 
+  Formula a -> NonDeterministicAutomaton s a'
+treeIsAssignment f = NA { delta = d, acc = ac, states = sts } where
+  vs = foVars f
+  ac = DS.singleton $ Just vs
+  sts = States $ DS.insert Nothing $ DS.map Just $ powerset vs
+  d _ Nothing = DS.singleton Nothing
+  d (a, v) (Just s) = case v `DS.intersection` s of
+    s' | DS.null s' -> DS.singleton $ Just $ v `DS.union` s
+       | otherwise  -> DS.singleton Nothing
+
+
+
+formulaToNTA :: forall a a' s. 
   (Alphabet a, Eq a, Ord a, Show s, Show a,
     a' ~ (a, DS.Set Ident), 
     s ~ LastVars (BT BoolState)) => 
-  Formula a -> DeterministicAutomaton s a'
-formulaToDTA (Label v a)    = DA {delta = d, acc = ac, states = sts} where
-  d (_,  set) (LV _ (L Good)) = LV [set] (L Good)
-  d (a', set) _ = LV [set] (if (v `DS.member` set) && (a == a') then L Good else L Fail)
+  Formula a -> NonDeterministicAutomaton s a'
+formulaToNTA (Label v a)    = NA {delta = d, acc = ac, states = sts} where
+  d (_,  set) (LV _ (L Good)) = DS.singleton $ LV [set] (L Good)
+  d (a', set) _               = DS.singleton $ LV [set] (if (v `DS.member` set) && (a == a') then L Good else L Fail)
   ac            = DS.singleton (LV [] (L Good)) 
   sts           = States $ DS.map (LV []) $ DS.fromList [L Good, L Fail]
-formulaToDTA (ExistsFO v f) = 
-  da { delta = d' } where
-  da@DA { delta = d } = formulaToDTA f     
-  d' (a', set) s = d (a', set \\ DS.singleton v) s `mappend` d (a', DS.insert v set) s
+formulaToNTA (ExistsFO v f) = 
+  na { delta = d' } where
+  na@NA { delta = d } = formulaToNTA f
+  d' (a', set) s = let 
+    sWith    = d (a', DS.insert v set) s
+    sWithout = d (a', set \\ DS.singleton v) s in
+    DS.union sWith sWithout
 
-formulaToDTA (ExistsSO v f) =  
-  da { delta = d' } where
-  da@DA { delta = d } = formulaToDTA f     
-  d' (a', set) s = d (a', set \\ DS.singleton v) s `mappend` d (a', DS.insert v set) s
-formulaToDTA (Elem x y)     = DA {delta = d, acc = ac, states = sts} where
-  d (_,  set) (LV _ (L Good)) = LV [set] (L Good)
-  d (a', set) _ = LV [set] (if (x `DS.member` set) && (y `DS.member` set) then L Good else L Fail)
+formulaToNTA (ExistsSO v f) =  
+  na { delta = d' } where
+  na@NA { delta = d } = formulaToNTA f     
+  d' (a', set) s = let 
+    sWith    = d (a', DS.insert v set) s
+    sWithout = d (a', set \\ DS.singleton v) s in
+    DS.union sWith sWithout
+
+formulaToNTA (Elem x y)     = NA {delta = d, acc = ac, states = sts} where
+  d (_,  set) (LV _ (L Good)) = DS.singleton $ LV [set] (L Good)
+  d (a', set) _               = DS.singleton $ LV [set] (if (x `DS.member` set) && (y `DS.member` set) then L Good else L Fail)
   ac            = DS.singleton (LV [] (L Good)) 
   sts           = States $ DS.map (LV []) $ DS.fromList [L Good, L Fail]
-formulaToDTA (LChild x y)   = DA {delta = d, acc = ac, states = sts} where
-  d (_, set) (LV (sLeft:_) _) = LV [set] (if (x `DS.member` set) && (y `DS.member` sLeft) then L Good else L Fail)
-  d (_, set) (LV _ x) = LV [set] x
+formulaToNTA (LChild x y)   = NA {delta = d, acc = ac, states = sts} where
+  d a@(_, set) s@(LV (sLeft:_) _) = DS.singleton $ LV [set] (if (x `DS.member` set) && (y `DS.member` sLeft) then L Good else L Fail)
+  d (_, set) (LV _ x)             = DS.singleton $ LV [set] x
   ac            = DS.singleton (LV [] (L Good)) 
   sts           = States $ DS.map (LV []) $ DS.fromList [L Good, L Fail]
-formulaToDTA (RChild x y)   = DA {delta = d, acc = ac, states = sts} where
-  d (_, set) (LV (_:sRight:_) _) = LV [set] (if (x `DS.member` set) && (y `DS.member` sRight) then L Good else L Fail)
-  d (_, set) (LV _ x) = LV [set] x
+formulaToNTA (RChild x y)   = NA {delta = d, acc = ac, states = sts} where
+  d (_, set) (LV (_:sRight:_) _) = DS.singleton $ LV [set] (if (x `DS.member` set) && (y `DS.member` sRight) then L Good else L Fail)
+  d (_, set) (LV _ x)            = DS.singleton $ LV [set] x
   ac            = DS.singleton (LV [] (L Good)) 
   sts           = States $ DS.map (LV []) $ DS.fromList [L Good, L Fail]
-formulaToDTA (Or f1 f2)     = da { acc = ac } where
-  da1, da2, da :: DeterministicAutomaton s a'
-  da1@DA { states = States sts1, acc = acc1 } = formulaToDTA f1
-  da2@DA { states = States sts2, acc = acc2 } = formulaToDTA f2
-  da@DA { states = States sts } = crossAutomaton da1 da2 
+formulaToNTA (Or f1 f2)     = na { acc = ac } where
+  na1, na2, na :: NonDeterministicAutomaton s a'
+  na1@NA { states = States sts1, acc = acc1 } = formulaToNTA f1
+  na2@NA { states = States sts2, acc = acc2 } = formulaToNTA f2
+  na@NA { states = States sts } = crossAutomaton na1 na2 
   ac = DS.union (pairsWith' pairAnnotatedState sts1 acc2) (pairsWith' pairAnnotatedState sts2 acc1)
-formulaToDTA (And f1 f2)    = da { acc = ac } where
-  da1@DA { acc = acc1 } = formulaToDTA f1
-  da2@DA { acc = acc2 } = formulaToDTA f2
-  da@DA { states = States sts } = crossAutomaton da1 da2 
+formulaToNTA (And f1 f2)    = na { acc = ac } where
+  na1@NA { acc = acc1 } = formulaToNTA f1
+  na2@NA { acc = acc2 } = formulaToNTA f2
+  na@NA { states = States sts } = crossAutomaton na1 na2 
   ac = pairsWith' pairAnnotatedState acc1 acc2
-formulaToDTA (Not f)        = let 
-  da@DA {acc = ac, states = States sts} = formulaToDTA f in
-  da {acc = sts \\ ac}
+formulaToNTA (Not f) = let 
+  na@NA {acc = ac, states = States sts} = formulaToNTA f in
+  na {acc = sts \\ ac}
+
+  
 
 pairAnnotatedState (LV a1 s1) (LV a2 s2) = LV (mappend a1 a2) (T s1 s2)
 crossAutomaton :: forall a a' s s'. 
   (Eq a, Ord a, Ord s, s' ~ LastVars (BT s), a' ~ (a, DS.Set Ident), Show s, Show a) => 
-  DeterministicAutomaton s' a' -> DeterministicAutomaton s' a' -> DeterministicAutomaton s' a'
+  NonDeterministicAutomaton s' a' -> NonDeterministicAutomaton s' a' -> NonDeterministicAutomaton s' a'
 crossAutomaton
-  da1@DA { delta = d1, states = States sts1 } 
-  da2@DA { delta = d2, states = States sts2 } = 
-    DA { delta = d, acc = error "can't use this automaton", states = States prs } where
+  da1@NA { delta = d1, states = States sts1 } 
+  da2@NA { delta = d2, states = States sts2 } = 
+    NA { delta = d, acc = error "can't use this automaton", states = States prs } where
     prs = pairsWith' pairAnnotatedState sts1 sts2
     d a@(_, set) (LV la (T s1 s2)) = let
-      (LV _ s1') = d1 a $ LV la s1
-      (LV _ s2') = d1 a $ LV la s2 in
-      LV [set] (T s1' s2')
-    d a@(_, set) (LV la s) = let
-      (LV _ s1') = d1 a $ LV la s
-      (LV _ s2') = d1 a $ LV la s in
-      LV [set] (T s1' s2')
+      s1Set = d1 a $ LV la s1
+      s2Set = d2 a $ LV la s2 in
+      pairsWith' (\ (LV _ s1') (LV _ s2') -> LV [set] (T s1' s2')) s1Set s2Set 
+    d a@(_, set) (LV la TEmpty) = let
+      s1Set = d1 a $ LV la TEmpty
+      s2Set = d2 a $ LV la TEmpty in
+      pairsWith' (\ (LV _ s1') (LV _ s2') -> LV [set] (T s1' s2')) s1Set s2Set 
+    d a@(_, set) (LV la s) = error "malformed state"
 
 
 forallFO :: Ident -> Formula a -> Formula a
@@ -203,6 +239,31 @@ letterAtPath p (Br _ chlds) | length chlds > 1 = case p of
   PRight p' -> letterAtPath p' (head $ tail chlds) 
   _ -> Nothing
 letterAtPath _ _ = Nothing
+
+vars :: Formula a -> DS.Set Ident
+vars (Label v _)    = DS.singleton v
+vars (ExistsFO v f) = DS.insert v $ vars f 
+vars (ExistsSO v f) = DS.insert v $ vars f 
+vars (Elem x y)     = DS.fromList [x, y] 
+vars (LChild x y)   = DS.fromList [x, y] 
+vars (RChild x y)   = DS.fromList [x, y] 
+vars (Or f1 f2)     = DS.union (vars f1) (vars f2)
+vars (And f1 f2)    = DS.union (vars f1) (vars f2)
+vars (Not f)        = vars f
+
+foVars :: Formula a -> DS.Set Ident
+foVars (Label v _)    = DS.singleton v
+foVars (ExistsFO v f) = DS.insert v $ foVars f 
+foVars (ExistsSO _ f) = foVars f 
+foVars (Elem x y)     = DS.singleton x
+foVars (LChild x y)   = DS.fromList [x, y] 
+foVars (RChild x y)   = DS.fromList [x, y] 
+foVars (Or f1 f2)     = DS.union (foVars f1) (foVars f2)
+foVars (And f1 f2)    = DS.union (foVars f1) (foVars f2)
+foVars (Not f)        = foVars f
+
+soVars :: Formula a -> DS.Set Ident
+soVars f = vars f \\ foVars f
 
 freeVars :: Formula a -> DS.Set Ident
 freeVars (Label v _)    = DS.singleton v
