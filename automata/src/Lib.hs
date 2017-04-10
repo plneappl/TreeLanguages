@@ -1,4 +1,4 @@
-module Lib (powerset, chooseAll, pairs, pairsWith, pairs', pairsWith', expect, fixIOWin) where
+module Lib (powerset, chooseAll, pairs, pairsWith, pairs', pairsWith', expect, fixIOWin, (⇒), (...)) where
 
 import Prelude hiding (map)
 import qualified Prelude as P
@@ -53,3 +53,11 @@ expect x y = fixWidth expectWidth (show x) ++ " ⇔ " ++ show y where
 
 fixIOWin :: IO ()
 fixIOWin = setLocaleEncoding utf8
+
+(⇒) :: Bool -> Bool -> Bool
+False ⇒ _ = True
+_ ⇒ True  = True
+_ ⇒ _     = False
+
+(...) :: (c -> d) -> (a -> b -> c) -> a -> b -> d
+(...) = (.) . (.)

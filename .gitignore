@@ -20,3 +20,4 @@ cabal.project.local
 *.log
 *.swp
 LICENSE
+/automata/src/Test.hs
